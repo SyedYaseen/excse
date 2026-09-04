@@ -5,8 +5,8 @@ Living checklist. Each step is one commit. Update as things land so this can be 
 ## Build order
 
 - [x] 1. Scaffold — `Cargo.toml`, `web/` Vite+React skeleton, `.gitignore`, docs
-- [ ] 2. `001_init.sql`; create `exse` role/database; pool + `sqlx::migrate!` on boot
-- [ ] 3. `auth.rs` — argon2, sessions, `AuthUser` extractor, login/logout/me, bootstrap txn
+- [x] 2. `001_init.sql`; create `exse` role/database; pool + `sqlx::migrate!` on boot
+- [x] 3. `auth.rs` — argon2, sessions, `AuthUser` extractor, login/logout/me, bootstrap txn
 - [ ] 4. `models.rs` + `routes/state.rs` — `GET /api/state`, `POST /api/sync`, one transaction
 - [ ] 5. `retention.rs` prune task + `active_days` upsert path
 - [ ] 6. Client core — `store.js`, `dates.js`, `api.js`, `sync.js`, outbox + unsynced indicator

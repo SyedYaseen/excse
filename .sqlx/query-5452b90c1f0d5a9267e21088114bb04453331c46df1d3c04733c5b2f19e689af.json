@@ -1,0 +1,28 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "select u.id, u.username\n               from sessions s\n               join users u on u.id = s.user_id\n              where s.token = $1 and s.expires_at > now()",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "username",
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text"
+      ]
+    },
+    "nullable": [
+      false,
+      false
+    ]
+  },
+  "hash": "5452b90c1f0d5a9267e21088114bb04453331c46df1d3c04733c5b2f19e689af"
+}

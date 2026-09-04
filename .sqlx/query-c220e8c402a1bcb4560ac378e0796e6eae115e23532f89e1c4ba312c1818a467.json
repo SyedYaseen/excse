@@ -1,0 +1,14 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "insert into cycles (user_id, seq, started_on) values ($1, 1, current_date)",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "c220e8c402a1bcb4560ac378e0796e6eae115e23532f89e1c4ba312c1818a467"
+}

@@ -9,8 +9,8 @@ Living checklist. Each step is one commit. Update as things land so this can be 
 - [x] 3. `auth.rs` — argon2, sessions, `AuthUser` extractor, login/logout/me, bootstrap txn
 - [x] 4. `models.rs` + `routes/state.rs` — `GET /api/state`, `POST /api/sync`, one transaction
 - [x] 5. `retention.rs` prune task + `active_days` upsert path
-- [ ] 6. Client core — `store.js`, `dates.js`, `api.js`, `sync.js`, outbox + unsynced indicator
-- [ ] 7. `sort.js` + unit tests for the ordering rules
+- [x] 6. Client core — `store.js`, `dates.js`, `api.js`, `sync.js`, outbox + unsynced indicator
+- [x] 7. `sort.js` + unit tests for the ordering rules
 - [ ] 8. Design foundation — Archivo woff2, `theme.css` tokens, `TallyMark` + tick animation
 - [ ] 9. UI — progress rule, daily band, Rotation/CategoryGroup/ExerciseRow, collapse
 - [ ] 10. CycleButton + EndCycleSheet incl. early-end skip flow

@@ -1,0 +1,40 @@
+# Standalone project: no Traefik labels, no domain, not part of the mizadah
+# stack. It joins mz-net purely so it can resolve the `postgres` hostname.
+#
+# Caveat: mz-net is owned by the mizadah compose project, so tearing that down
+# takes this app's database connectivity with it. See docs/DECISIONS.md.
+name: exse
+
+services:
+  exse:
+    container_name: exse
+    build:
+      context: .
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    environment:
+      # Inside the network the database is reachable by service name, unlike
+      # the host-facing DATABASE_URL used for local dev and `sqlx prepare`.
+      DATABASE_URL: ${DATABASE_URL_DOCKER}
+      COOKIE_SECRET: ${COOKIE_SECRET}
+      ADMIN_INITIAL_PASSWORD: ${ADMIN_INITIAL_PASSWORD}
+      RETENTION_DAYS: ${RETENTION_DAYS:-21}
+      PORT: 3005
+      STATIC_DIR: /app/dist
+      RUST_LOG: ${RUST_LOG:-info,exse=info}
+    ports:
+      # Bound to the LAN address, not 0.0.0.0, so this is not reachable from
+      # the Cloudflare tunnel or the internet. Needs a static DHCP lease --
+      # if the host's address changes, this fails to start.
+      - "192.168.1.18:3005:3005"
+    networks:
+      - mz-net
+    deploy:
+      resources:
+        limits:
+          cpus: "1"
+          memory: 256M
+
+networks:
+  mz-net:
+    external: true

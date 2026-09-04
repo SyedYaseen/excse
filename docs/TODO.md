@@ -17,7 +17,7 @@ Living checklist. Each step is one commit. Update as things land so this can be 
 - [ ] 11. History — month calendar, 52×7 year tally, streaks, cycle summaries
 - [ ] 12. Light/dark toggle, reduced motion, mobile polish
 - [ ] 13. Settings — manage exercises, cadence toggle, reorder, change password
-- [ ] 14. Dockerfile + docker-compose + README
+- [x] 14. Dockerfile + docker-compose + README
 
 ## Deferred (consciously cut from v1)
 

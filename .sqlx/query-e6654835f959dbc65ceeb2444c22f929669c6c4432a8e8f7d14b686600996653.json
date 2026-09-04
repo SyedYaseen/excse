@@ -1,0 +1,17 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "update exercises set category = $1, cadence = $2, archived_at = null\n              where user_id = $3 and lower(name) = lower($4)",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Text",
+        "Uuid",
+        "Text"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "e6654835f959dbc65ceeb2444c22f929669c6c4432a8e8f7d14b686600996653"
+}

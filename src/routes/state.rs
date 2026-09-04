@@ -13,7 +13,7 @@ pub async fn get_state(
     user: AuthUser,
 ) -> AppResult<Json<State>> {
     let mut tx = state.db.begin().await?;
-    let out = load_state(&mut tx, user.id, state.retention_days).await?;
+    let out = load_state(&mut tx, user.id, state.retention_days, state.day_threshold).await?;
     tx.commit().await?;
     Ok(Json(out))
 }
@@ -29,10 +29,10 @@ pub async fn sync(
     // always lands before a Tick that references it. Any failure rolls the
     // whole batch back and the client keeps its outbox.
     for op in &body.ops {
-        apply(&mut tx, user.id, op).await?;
+        apply(&mut tx, user.id, op, state.day_threshold).await?;
     }
 
-    let out = load_state(&mut tx, user.id, state.retention_days).await?;
+    let out = load_state(&mut tx, user.id, state.retention_days, state.day_threshold).await?;
     tx.commit().await?;
     Ok(Json(out))
 }
@@ -51,7 +51,12 @@ fn check_day(day: NaiveDate) -> AppResult<()> {
     Ok(())
 }
 
-async fn apply(conn: &mut PgConnection, user_id: Uuid, op: &Op) -> AppResult<()> {
+async fn apply(
+    conn: &mut PgConnection,
+    user_id: Uuid,
+    op: &Op,
+    day_threshold: i32,
+) -> AppResult<()> {
     match op {
         Op::Tick { exercise_id, day } => {
             check_day(*day)?;
@@ -67,14 +72,7 @@ async fn apply(conn: &mut PgConnection, user_id: Uuid, op: &Op) -> AppResult<()>
             .execute(&mut *conn)
             .await?;
 
-            sqlx::query!(
-                "insert into active_days (user_id, day) values ($1, $2)
-                 on conflict do nothing",
-                user_id,
-                day
-            )
-            .execute(&mut *conn)
-            .await?;
+            recount_day(&mut *conn, user_id, *day, day_threshold).await?;
 
             // Only the first completion in a cycle sets completed_on. Ticking
             // an already-done exercise again later in the same cycle is a
@@ -105,20 +103,9 @@ async fn apply(conn: &mut PgConnection, user_id: Uuid, op: &Op) -> AppResult<()>
             .await?;
 
             // active_days is permanent, but a mis-tap must not leave behind a
-            // workout that never happened. Retract the day only once nothing
-            // else was logged against it.
-            sqlx::query!(
-                "delete from active_days a
-                  where a.user_id = $1 and a.day = $2
-                    and not exists (
-                        select 1 from exercise_logs l
-                         where l.user_id = $1 and l.day = $2
-                    )",
-                user_id,
-                day
-            )
-            .execute(&mut *conn)
-            .await?;
+            // workout that never happened. Re-derive the day from what is
+            // actually logged against it now.
+            recount_day(&mut *conn, user_id, *day, day_threshold).await?;
 
             // Only clear cycle completion if the tick being removed is the one
             // that completed it. Unticking a later repeat leaves it done.
@@ -268,6 +255,82 @@ async fn apply(conn: &mut PgConnection, user_id: Uuid, op: &Op) -> AppResult<()>
                 .await?;
             }
         }
+
+        Op::MarkDay { day, marked } => {
+            check_day(*day)?;
+
+            if *marked {
+                sqlx::query!(
+                    "insert into active_days (user_id, day, manual) values ($1, $2, true)
+                     on conflict (user_id, day) do update set manual = true",
+                    user_id,
+                    day
+                )
+                .execute(&mut *conn)
+                .await?;
+            } else {
+                // Clearing the override, not deleting the day: if the logs
+                // still earn it, it stays. Only a day that was propped up by
+                // hand actually disappears.
+                sqlx::query!(
+                    "update active_days set manual = false where user_id = $1 and day = $2",
+                    user_id,
+                    day
+                )
+                .execute(&mut *conn)
+                .await?;
+                recount_day(&mut *conn, user_id, *day, day_threshold).await?;
+            }
+        }
+    }
+    Ok(())
+}
+
+/// Decides whether a day belongs on the calendar, from scratch.
+///
+/// The rule is a count of *rotation* exercises: the daily band is excluded, so
+/// crunches and a plank on their own leave the day blank. Four squats-and-press
+/// sessions' worth of work is what a day is, and the threshold is
+/// `DAY_MIN_EXERCISES`.
+///
+/// Recomputing rather than incrementing means the threshold can be changed
+/// later without stranding rows that were written under the old one, and it
+/// makes tick/untick symmetric for free. A day the user marked by hand carries
+/// `manual` and is never removed here -- only `Op::MarkDay` clears that.
+async fn recount_day(
+    conn: &mut PgConnection,
+    user_id: Uuid,
+    day: NaiveDate,
+    threshold: i32,
+) -> AppResult<()> {
+    let logged: i64 = sqlx::query_scalar!(
+        "select count(*) from exercise_logs l
+           join exercises e on e.id = l.exercise_id
+          where l.user_id = $1 and l.day = $2 and e.cadence = 'cycle'",
+        user_id,
+        day
+    )
+    .fetch_one(&mut *conn)
+    .await?
+    .unwrap_or(0);
+
+    if logged >= threshold as i64 {
+        sqlx::query!(
+            "insert into active_days (user_id, day) values ($1, $2)
+             on conflict do nothing",
+            user_id,
+            day
+        )
+        .execute(&mut *conn)
+        .await?;
+    } else {
+        sqlx::query!(
+            "delete from active_days where user_id = $1 and day = $2 and not manual",
+            user_id,
+            day
+        )
+        .execute(&mut *conn)
+        .await?;
     }
     Ok(())
 }
@@ -334,6 +397,7 @@ async fn load_state(
     conn: &mut PgConnection,
     user_id: Uuid,
     retention_days: i32,
+    day_threshold: i32,
 ) -> AppResult<State> {
     let today = chrono::Utc::now().date_naive();
     let cycle = ensure_cycle(&mut *conn, user_id, today).await?;
@@ -381,12 +445,24 @@ async fn load_state(
     .fetch_all(&mut *conn)
     .await?;
 
+    // The subset that was marked by hand. The client needs the distinction to
+    // know whether unmarking a day will actually remove it, or whether the
+    // logs earn it regardless.
+    let manual_days = sqlx::query_scalar!(
+        "select day from active_days where user_id = $1 and manual order by day",
+        user_id
+    )
+    .fetch_all(&mut *conn)
+    .await?;
+
     Ok(State {
         exercises,
         cycle,
         past_cycles,
         logs,
         active_days,
+        manual_days,
         retention_days,
+        day_threshold,
     })
 }

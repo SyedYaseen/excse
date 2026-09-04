@@ -1,9 +1,10 @@
-import { expect, psql, test } from '../fixtures.js'
+import { expect, psql, rotationCount, test } from '../fixtures.js'
 
 const mark = (app, name) => app.getByRole('checkbox', { name, exact: true })
 const settings = (app) => app.getByRole('button', { name: 'Settings' }).click()
 
 test('B6 — add an exercise, and it appears in its category on Today', async ({ app }) => {
+  const total = rotationCount()
   await settings(app)
   await app.getByRole('button', { name: 'Add' }).click()
   await app.getByLabel('Name').fill('Test wall sit')
@@ -11,7 +12,7 @@ test('B6 — add an exercise, and it appears in its category on Today', async ({
   await app.getByRole('button', { name: 'Save' }).click()
 
   await app.getByRole('button', { name: 'Today' }).click()
-  await expect(app.getByText('17 left')).toBeVisible()
+  await expect(app.getByText(`${total + 1} left`)).toBeVisible()
   await expect(mark(app, 'Test wall sit')).toBeVisible()
 
   await expect
@@ -20,6 +21,7 @@ test('B6 — add an exercise, and it appears in its category on Today', async ({
 })
 
 test('B6 — switching cadence to daily moves it into the top band', async ({ app }) => {
+  const total = rotationCount()
   psql(
     `insert into exercises (user_id, name, category, cadence)
      select id, 'Test bridge hold', 'Core', 'cycle' from users
@@ -40,17 +42,19 @@ test('B6 — switching cadence to daily moves it into the top band', async ({ ap
   const band = app.getByRole('region', { name: 'Every day' })
   await expect(band.getByText('Test bridge hold')).toBeVisible()
   // Dailies never gate a cycle, so the cycle count drops back.
-  await expect(app.getByText('16 left')).toBeVisible()
+  await expect(app.getByText(`${total} left`)).toBeVisible()
 })
 
 test('B6 — removing an exercise hides it but keeps its history', async ({ app }) => {
-  const name = 'Push-ups'
+  // A catalogue name with no other name containing it, so the exact-match
+  // locators below are unambiguous.
+  const name = 'Deadlift'
   await mark(app, name).click()
   await expect.poll(() => psql('select count(*) from exercise_logs')).toBe('1')
 
   await settings(app)
   app.on('dialog', (d) => d.accept())
-  // Exact: "Push-ups" is a substring of three other exercise names.
+  // Exact throughout: several catalogue names are substrings of others.
   const settingsRow = app.locator('.row').filter({ has: app.getByText(name, { exact: true }) })
   await settingsRow.getByRole('button', { name: 'Remove' }).click()
 
@@ -60,7 +64,9 @@ test('B6 — removing an exercise hides it but keeps its history', async ({ app 
 
   // Soft delete: the log survives, so old history stays resolvable to a name.
   await expect
-    .poll(() => psql("select count(*) from exercises where name = 'Push-ups' and archived_at is not null"))
+    .poll(() =>
+      psql(`select count(*) from exercises where name = '${name}' and archived_at is not null`),
+    )
     .toBe('1')
   expect(await psql('select count(*) from exercise_logs')).toBe('1')
 })

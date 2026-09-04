@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "insert into exercises (user_id, name, category, cadence, sort_order)\n             values ($1, $2, $3, $4, $5)",
+  "query": "insert into exercises (user_id, name, category, cadence, sort_order)\n                 values ($1, $2, $3, $4, $5)",
   "describe": {
     "columns": [],
     "parameters": {
@@ -14,5 +14,5 @@
     },
     "nullable": []
   },
-  "hash": "a8f58d44fe91723d76b04d1a4cd840b4965703342940704a7cff99c14208c7ea"
+  "hash": "0ec5f0d6f523d6aec91aad69ab8e297e35f8c8e5a36b4a2ffb2141ea4d0e54b8"
 }

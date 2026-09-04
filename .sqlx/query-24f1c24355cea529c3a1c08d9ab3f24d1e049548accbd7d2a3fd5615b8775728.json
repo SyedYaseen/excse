@@ -1,0 +1,15 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "delete from active_days where user_id = $1 and day = $2 and not manual",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Date"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "24f1c24355cea529c3a1c08d9ab3f24d1e049548accbd7d2a3fd5615b8775728"
+}

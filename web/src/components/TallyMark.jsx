@@ -1,26 +1,15 @@
 // The tick is a tally mark: a vertical stroke that gets a diagonal slash drawn
 // through it. You are making a mark on a sheet, not filling in a checkbox.
 //
-// This is a real control, not a styled div. A custom tick glyph is the easiest
-// place to ship something unusable by keyboard or screen reader.
+// The glyph itself is decorative. The control is the row that contains it --
+// `<button role="checkbox">` -- so tapping anywhere along the name strikes it
+// out, which is the gesture people actually reach for. A 44px glyph inside a
+// full-width row means the visible mark is still its own honest target.
 
-export function TallyMark({ checked, onChange, label }) {
+export function TallyMark({ checked }) {
   return (
-    <span
-      className="tally"
-      role="checkbox"
-      aria-checked={checked}
-      aria-label={label}
-      tabIndex={0}
-      onClick={onChange}
-      onKeyDown={(e) => {
-        if (e.key === ' ' || e.key === 'Enter') {
-          e.preventDefault()
-          onChange()
-        }
-      }}
-    >
-      <svg viewBox="0 0 24 24" aria-hidden="true">
+    <span className="tally" data-on={checked} aria-hidden="true">
+      <svg viewBox="0 0 24 24">
         <line className="stem" x1="12" y1="4" x2="12" y2="20" />
         <line className="slash" x1="5" y1="19" x2="19" y2="5" />
       </svg>

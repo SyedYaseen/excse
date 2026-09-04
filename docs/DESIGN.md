@@ -9,6 +9,46 @@ two seconds with one thumb. Not a gym-bro app (no chrome, no neon, no BEAST MODE
 clinical health dashboard. The nearest real-world object is a **tally sheet** — quiet,
 repetitive, unglamorous, about accumulation over time. Every choice below comes from that.
 
+## Hierarchy: four steps and nothing else
+
+The first version was minimal and had no hierarchy at all: a `.category-head` was
+`1rem/600` against a `1rem/400` exercise name, with no rule, no size step and 24px of margin
+between groups. The whole Today screen was one undifferentiated column of 16px text, and the
+eye had nowhere to land. Minimal is right; flat is not.
+
+The screen now has exactly four type steps, tokenised in `theme.css` so they cannot drift back
+into scattered rem literals:
+
+```
+--t-hero  2.5rem     the count -- the loudest thing in the app
+--t-title 1.1875rem  a muscle group
+--t-row   1.0625rem  an exercise
+--t-meta  0.8125rem  counts, labels, the skip badge
+```
+
+The reading order is deliberate and always the same:
+
+1. **`28 left`** at the top, in the hero step. Mid-workout, one thumb, the first question is
+   how much is left, and the answer should not have to be read.
+2. **The accented group heading** — the one the ordering rules would have you do next. It is an
+   underline rather than a badge or a fill, so it can move between groups without shifting a
+   single row.
+3. **The rows**, tracked left to right by a hairline inset to the text column.
+
+Group headings are **sticky** under the 2px progress rail. In a list of forty exercises the
+easiest thing to lose is which muscle group you are in; the heading simply never leaves.
+
+Rows are 52px with `white-space: nowrap` and an ellipsis. Previously `.exercise-name` had
+neither, so a long name wrapped to a second line -- and with no separators between rows, one
+wrapped exercise was indistinguishable from two adjacent ones. That is the "double lines"
+problem, and it was two problems: this one, and the literal double rule below.
+
+## The whole row is the control
+
+`<button role="checkbox">` wraps the tally, the name and the badge. Tapping the name strikes it
+out exactly like tapping the glyph. Aiming a thumb at a 22px mark between sets is not a
+gesture anyone actually makes, and the strike-through is the thing people read anyway.
+
 ## The one bold move: the tick *is* a tally mark
 
 Not a rounded square with a checkmark. Each exercise carries a single vertical stroke; tapping
@@ -18,15 +58,18 @@ daily band to the year view.
 
 Everything else stays quiet. Boldness is spent here and nowhere else.
 
-The mark is a real control: `<button role="checkbox" aria-checked>` with the stroke in SVG, a
-≥44px hit area, and a visible focus ring. A custom tick glyph is the easiest place in this
-design to accidentally ship something unusable by keyboard or screen reader.
+The glyph itself is decorative (`aria-hidden`); the row around it is the
+`<button role="checkbox" aria-checked>`, giving a full-width hit area, native Space/Enter
+handling and a visible focus ring. A custom tick glyph is the easiest place in this design to
+accidentally ship something unusable by keyboard or screen reader.
 
 ## Tokens
 
-**Color.** Ground is a pale cool chalk-grey. The accent appears in exactly two places: the cycle
-button and today's marker on the calendar. Completion reads as strike-through and dimming, not
-colour, so the palette stays almost monochrome.
+**Color.** Ground is a pale cool chalk-grey. The accent appears in exactly three places: the
+cycle button, today's marker on the calendar, and the underline on the group to do next.
+Completion reads as strike-through and dimming, not colour, so the palette stays almost
+monochrome. A fourth token, `--hair`, is a lighter-than-`--rule` line used between rows: a list
+should read as one block with tracks through it, not a stack of separate things.
 
 Deliberately avoided: the cream/serif/terracotta cluster, and the near-black + acid-accent
 cluster that fitness apps default to.
@@ -52,29 +95,40 @@ viewport. Cycle progress is a 2px rule spanning the full width that fills left-t
 as both the app's only chrome and its only stat. Structure comes from rules and vertical rhythm,
 never bordered boxes or shadows.
 
-A **double rule** separates the daily band from the rotation. That is structural information,
-not decoration: it encodes "above resets nightly, below persists" without a label saying so.
+The daily band sits on **its own ground tone** with its own label. It used to be separated by a
+double rule -- two hairlines 3px apart, meant to encode "above resets nightly, below persists"
+without a label. On a phone that read as one slightly thick line, said nothing, and looked like
+a mistake. A tinted full-bleed band is not a card (no radius, no shadow, no border) and needs
+no explaining.
 
 ```
- ▓▓▓▓▓▓▓▓▓▓▓▓░░░░░░░░░░░░░░░░░░░░░   ← progress rule = the entire header
- Cycle 3                  11 left
+ ▓▓▓▓▓▓▓▓▓▓▓▓░░░░░░░░░░░░░░░░░░░░░   ← progress rail, 2px, sticky
 
- Crunches      ╱ ╱ ╱ · ╱ ╱ ╱   ╱│    ← last 7 days, then today's mark
- Plank         · ╱ ╱ · ╱ ╱ ╱   ╱│
- Squats        ╱ · ╱ ╱ · · ╱    │    ← today not yet marked
- ═════════════════════════════════   ← above resets nightly, below persists
+ 11 left            Next up: Legs    ← the eye lands here first
+ Cycle 3                  Re-sort
 
- Back                          0/4
-   │  Superman        skipped twice
-   │  Bird dog
-   │  Reverse snow angel
+┌─────────────────────────────────┐
+│ Every day                   1/6 │  ← tinted band, full bleed
+│ ╱│ Crunches   ╱ ╱ ╱ · ╱ ╱ ╱     │
+│  │ Plank      · ╱ ╱ · ╱ ╱ ╱     │
+│  │ Pull up    ╱ · ╱ ╱ · · ╱     │
+└─────────────────────────────────┘
+
+ Legs                          0/5
+ ═════════════════════════════════   ← accent underline: do this next
+   │  Squat            skipped twice
+   ──────────────────────────────
+   │  Split squat
+   ──────────────────────────────
+   │  Lunges
 
  Core                          1/3
-   │  Leg raises
-  ╱│  Hollow hold
  ─────────────────────────────────
+  ╱│  Leg raises
+   │  Plank arm thing
+ ─────────────────────────────────
+ Done this cycle
   Chest                        4/4
-  Shoulders                    3/3
 ```
 
 ## The year view is the payoff
@@ -84,12 +138,22 @@ accumulated over a year. Not GitHub squares, which is the default and would unde
 metaphor. This is the emotional payload of the whole brief, so it gets the strongest single
 image in the app.
 
+## The order holds still
+
+The ordering rules are the reason this app exists, but running them after every tick meant the
+row below the one you just tapped slid up into its place immediately -- a double-tap waiting to
+happen, and it lost your place in the muscle group you were working through.
+
+So the rules run **when you ask**: on open, on a new day, on a new cycle, and on `Re-sort`.
+Between those, nothing moves. A group you finish now reads as done where it stands and only
+collapses into the completed zone at the next sort. `Next up: Legs` is read live from the same
+rules and scrolls you there — naming the next group is free, moving it is not.
+
 ## Motion
 
-One orchestrated moment, answering a user action: on tick the slash strokes in over ~140ms, the
-name strikes through, and if that completed a category, the category collapses and settles into
-the completed zone. No page-load fades, no per-row hover transitions.
-`prefers-reduced-motion` drops all of it to instant state changes.
+One orchestrated moment, answering a user action: on tick the slash strokes in over ~140ms and
+the name strikes through. Nothing else moves, by design — see above. No page-load fades, no
+per-row hover transitions. `prefers-reduced-motion` drops all of it to instant state changes.
 
 ## Copy
 
@@ -100,6 +164,8 @@ Plain, active, from the user's perspective, each element doing one job.
 - Unsynced: *"Not saved yet"* — what the user cares about, not "Offline".
 - Login failure: *"Wrong username or password."* No apology, not vague.
 - Empty state: *"Add the exercises you can do at home. You'll tick them off as you go."*
+- The calendar's rule, stated rather than hidden: *"A day marks itself once you have done 4
+  exercises outside the daily band. Tap any day to mark it yourself."*
 
 ## Quality floor
 
@@ -123,3 +189,4 @@ design, so don't let them creep back:
 - `→` appended to link and button text
 - accenting a single word in a headline
 - fade-and-slide-up entrances on every section
+- a card per list item (the hairlines do the same job with none of the weight)

@@ -10,6 +10,7 @@ SHELL := /bin/bash
 
 SERVER      ?= poochi
 SERVER_PATH ?= /home/poochi/projects/exse
+USER        ?= admin
 APP_URL     ?= http://192.168.1.18:3005
 LOCAL_URL   ?= http://127.0.0.1:3005
 
@@ -27,7 +28,7 @@ export SQLX_OFFLINE = true
 
 .PHONY: help dev dev-ui serve web check test e2e screens \
         deploy push remote-pull logs restart ps shell \
-        db sqlx-prepare clean
+        db sqlx-prepare reset-password reset-password-local clean
 
 # --- local ------------------------------------------------------------------
 
@@ -112,6 +113,13 @@ db: ## Create the local exse role and database (needs a Postgres superuser)
 sqlx-prepare: ## Regenerate .sqlx/ after changing a query. Commit the result
 	@set -a; . ./.env; set +a; SQLX_OFFLINE=false cargo sqlx prepare
 
+reset-password: ## Set a new password for USER=admin on the server, keeping all data
+	@echo "==> resetting $(USER) on $(SERVER); you will be prompted for the new password"
+	@ssh -t $(SERVER) 'cd $(SERVER_PATH) && docker compose exec exse /app/exse reset-password $(USER)'
+
+reset-password-local: ## Same, against the database in ./.env
+	@set -a; . ./.env; set +a; cargo run --quiet -- reset-password $(USER)
+
 # --- misc -------------------------------------------------------------------
 
 clean:
@@ -121,4 +129,4 @@ clean:
 help:
 	@grep -hE '^[a-z0-9-]+:.*##' $(MAKEFILE_LIST) \
 	  | sort \
-	  | awk -F':.*## ' '{printf "  \033[1m%-14s\033[0m %s\n", $$1, $$2}'
+	  | awk -F':.*## ' '{printf "  \033[1m%-21s\033[0m %s\n", $$1, $$2}'

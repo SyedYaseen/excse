@@ -3,6 +3,7 @@ pub mod error;
 pub mod models;
 pub mod retention;
 pub mod routes;
+pub mod seed;
 
 use axum::extract::FromRef;
 use axum::Router;
@@ -19,6 +20,9 @@ use tower_http::trace::TraceLayer;
 pub struct AppState {
     pub db: PgPool,
     pub retention_days: i32,
+    /// How many rotation exercises a day needs before it counts on the
+    /// calendar. Dailies are excluded -- see routes::state::recount_day.
+    pub day_threshold: i32,
     pub cookie_secure: bool,
     pub cookie_key: Key,
 }

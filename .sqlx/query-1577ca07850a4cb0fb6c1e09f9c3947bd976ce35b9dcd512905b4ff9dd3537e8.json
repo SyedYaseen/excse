@@ -1,0 +1,22 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "select day from active_days where user_id = $1 and manual order by day",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "day",
+        "type_info": "Date"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "1577ca07850a4cb0fb6c1e09f9c3947bd976ce35b9dcd512905b4ff9dd3537e8"
+}

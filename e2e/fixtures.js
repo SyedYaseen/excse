@@ -7,6 +7,25 @@ export const PASSWORD = process.env.EXSE_PASSWORD ?? 'testpass123'
 const DB_URL = process.env.DATABASE_URL ?? 'postgres://exse:exse@127.0.0.1:5432/exse'
 
 /**
+ * How many rotation exercises the seeded catalogue has, and how many
+ * exercises in total. Read from the database rather than hard-coded: the
+ * catalogue is the user's own list and changes, and a test that asserts "16
+ * left" is really asserting the seed, not the behaviour.
+ */
+export function rotationCount() {
+  return Number(
+    psql("select count(*) from exercises where cadence = 'cycle' and archived_at is null"),
+  )
+}
+
+export function exerciseCount() {
+  return Number(psql('select count(*) from exercises where archived_at is null'))
+}
+
+/** Mirrors DAY_MIN_EXERCISES on the server. */
+export const DAY_THRESHOLD = Number(process.env.DAY_MIN_EXERCISES ?? 4)
+
+/**
  * Reset everything except the user, their exercises and the permanent
  * day-level record's *table* -- so each test starts on cycle 1 with nothing
  * ticked. Run over psql rather than through the API because there is
@@ -20,7 +39,7 @@ export function resetState(sql = '') {
     delete from cycle_skips;
     delete from cycles;
     -- Anything a test created is named "Test ..."; drop it so every test
-    -- starts from the same 18 starter exercises.
+    -- starts from the same seeded catalogue.
     delete from exercises where name like 'Test %';
     update exercises set completed_on = null, skip_streak = 0, archived_at = null;
     insert into cycles (user_id, seq, started_on)

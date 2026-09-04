@@ -1,9 +1,14 @@
 /* One stylesheet for the whole app. See docs/DESIGN.md before changing
    anything here -- several choices are deliberate refusals of defaults.
 
-   No cards, no shadows, no rounded boxes. Structure comes from rules and
-   vertical rhythm. The accent colour appears in exactly two places: the cycle
-   button and today's marker. Completion reads as strike-through and dimming. */
+   No cards, no shadows, no rounded boxes. Structure comes from rules, ground
+   tone and vertical rhythm. Completion reads as strike-through and dimming,
+   never colour. The accent appears in exactly three places: the cycle button,
+   today's marker, and the underline on the group to do next.
+
+   Hierarchy is carried by four steps and nothing else -- the cycle count, a
+   group heading, a row, and its meta -- so the eye lands on the count, then
+   the accented heading, then works down the rows. */
 
 @font-face {
   font-family: 'Archivo';
@@ -23,10 +28,26 @@
   --mark: #2e4756;
   --on-mark: #f5f6f3;
 
+  /* Hairline between rows: lighter than a structural rule, so a list reads as
+     one block with tracks through it rather than a stack of separate things. */
+  --hair: #d7dbd6;
+
   --step: 8px;
   --tap: 44px;
+  --row: 52px;
   --measure: 34rem;
   --tick-ms: 140ms;
+
+  /* The one sticky rail everything else hangs below: the 2px progress rule. */
+  --rail: calc(2px + env(safe-area-inset-top));
+
+  /* Four type steps, and only four. Untokenised rem literals were how the old
+     screen ended up as one undifferentiated column of 16px text. */
+  --t-hero: 2.5rem;
+  --t-title: 1.1875rem;
+  --t-row: 1.0625rem;
+  --t-meta: 0.8125rem;
+  --t-micro: 0.6875rem;
 
   color-scheme: light;
 }
@@ -41,6 +62,7 @@
     --done: #5a615c;
     --mark: #7fb2cc;
     --on-mark: #14171a;
+    --hair: #262c2f;
     color-scheme: dark;
   }
 }
@@ -54,6 +76,7 @@
   --done: #5a615c;
   --mark: #7fb2cc;
   --on-mark: #14171a;
+  --hair: #262c2f;
   color-scheme: dark;
 }
 
@@ -100,22 +123,21 @@ button {
   padding-right: max(calc(var(--step) * 2), env(safe-area-inset-right));
 }
 
-/* The progress rule is the entire header: the app's only chrome and its only
-   stat, one element doing two jobs. */
+/* The sticky rail is 2px of progress rule and nothing else. Everything taller
+   scrolls away, so the group headings can stick directly beneath it without a
+   fixed header eating a third of a phone screen. */
 .progress {
   position: sticky;
   top: 0;
-  z-index: 2;
+  z-index: 4;
   background: var(--paper);
   padding-top: env(safe-area-inset-top);
   margin: 0 calc(var(--step) * -2);
-  padding-inline: calc(var(--step) * 2);
 }
 
 .progress-track {
   height: 2px;
   background: var(--rule);
-  margin: 0 calc(var(--step) * -2);
 }
 
 .progress-fill {
@@ -124,28 +146,81 @@ button {
   transition: width 220ms ease-out;
 }
 
-.progress-meta {
+/* The count is the loudest thing in the app on purpose: mid-workout, one
+   thumb, the first question is "how much is left" and the eye should land on
+   the answer without reading anything. */
+/* Centred, not top-aligned: the two controls stack to 88px against a 64px
+   count, and flex-start left an obvious hole under the number. */
+.hero {
   display: flex;
+  align-items: center;
   justify-content: space-between;
-  align-items: baseline;
-  gap: var(--step);
-  padding: calc(var(--step) * 1.5) 0 calc(var(--step) * 2);
-  font-size: 0.875rem;
+  gap: calc(var(--step) * 2);
+  padding: calc(var(--step) * 2) 0;
+}
+
+.progress-meta {
+  min-width: 0;
+}
+
+.hero-count {
+  margin: 0;
+  font-size: var(--t-hero);
+  font-stretch: 118%;
+  font-weight: 300;
+  line-height: 1;
   color: var(--ink-2);
 }
 
-.progress-meta strong {
+.hero-count strong {
+  font-weight: 700;
   color: var(--ink);
-  font-weight: 600;
+}
+
+.hero-sub {
+  margin: calc(var(--step) * 0.75) 0 0;
+  font-size: var(--t-meta);
+  color: var(--ink-2);
+}
+
+/* Two quiet controls, deliberately not buttons-with-borders: the ordering is
+   a tool you reach for between sets, not the thing you came here to press. */
+.hero-actions {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 2px;
+  flex: 0 0 auto;
+}
+
+.hero-actions button {
+  min-height: var(--tap);
+  padding-left: var(--step);
+  font-size: var(--t-meta);
+  color: var(--ink-2);
+  text-align: right;
+}
+
+.hero-actions .jump {
+  color: var(--ink);
+  text-decoration: underline;
+  text-decoration-color: var(--mark);
+  text-decoration-thickness: 2px;
+  text-underline-offset: 4px;
 }
 
 .unsynced {
+  display: block;
   color: var(--ink-2);
-  font-size: 0.8125rem;
+  font-size: var(--t-meta);
 }
 
 /* --- tally mark ----------------------------------------------------------- */
 
+/* The mark is drawn by the row, not by itself: the whole row is the control,
+   so tapping the name strikes it out exactly like tapping the glyph. It keeps
+   a 44px box so the glyph still hangs in its own gutter and the row's touch
+   target is honest about where the tally is. */
 .tally {
   display: inline-grid;
   place-items: center;
@@ -175,12 +250,12 @@ button {
   stroke-dashoffset: 26;
 }
 
-.tally[aria-checked='true'] .slash {
+.tally[data-on='true'] .slash {
   stroke-dashoffset: 0;
   transition: stroke-dashoffset var(--tick-ms) ease-out;
 }
 
-.tally[aria-checked='true'] .stem {
+.tally[data-on='true'] .stem {
   stroke: var(--ink);
 }
 
@@ -209,11 +284,48 @@ button {
 
 /* --- daily band ----------------------------------------------------------- */
 
+/* "Above resets nightly, below persists" used to be carried by a pair of
+   hairlines 3px apart. On a phone that read as one slightly thick line and
+   said nothing; worse, it looked like a mistake. The zone now differs in
+   ground tone and carries its own label, which is unambiguous at a glance and
+   needs no explaining. */
+.daily-band {
+  background: var(--raise);
+  border-bottom: 1px solid var(--rule);
+  margin: 0 calc(var(--step) * -2) calc(var(--step) * 3);
+  padding: var(--step) calc(var(--step) * 2) calc(var(--step) * 1.5);
+  padding-left: max(calc(var(--step) * 2), env(safe-area-inset-left));
+  padding-right: max(calc(var(--step) * 2), env(safe-area-inset-right));
+}
+
+.band-label {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: var(--step);
+  margin: 0 0 4px;
+  font-size: var(--t-meta);
+  font-weight: 400;
+  color: var(--ink-2);
+}
+
 .daily-row {
+  position: relative;
   display: flex;
   align-items: center;
   gap: var(--step);
-  min-height: var(--tap);
+  width: 100%;
+  min-height: var(--row);
+  text-align: left;
+}
+
+.daily-row + .daily-row::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: calc(var(--tap) - 4px);
+  right: 0;
+  border-top: 1px solid var(--hair);
 }
 
 .daily-name {
@@ -222,6 +334,7 @@ button {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  font-size: var(--t-row);
 }
 
 .daily-row[data-done='true'] .daily-name {
@@ -234,55 +347,91 @@ button {
   display: flex;
   gap: 3px;
   align-items: center;
-}
-
-/* Double rule: above resets nightly, below persists. Structural information,
-   not decoration -- it means the boundary needs no label. */
-.band-end {
-  border-top: 1px solid var(--rule);
-  border-bottom: 1px solid var(--rule);
-  /* 3px of clear air between the hairlines. At 1px the pair read as a single
-     thicker rule on a phone, which loses the whole "two zones" signal. */
-  height: 5px;
-  margin: calc(var(--step) * 2) 0 calc(var(--step) * 3);
+  flex: 0 0 auto;
 }
 
 /* --- rotation ------------------------------------------------------------- */
 
 .category {
-  margin-bottom: calc(var(--step) * 3);
+  margin-bottom: calc(var(--step) * 4);
+  /* "Next up" scrolls here; without this the heading lands underneath the
+     sticky rail instead of just below it. */
+  scroll-margin-top: var(--rail);
 }
 
+/* The heading sticks to the rail, so the muscle group you are working through
+   never scrolls out of sight. Losing track of which group you were in is the
+   single easiest thing to do in a list this long. */
 .category-head {
+  position: sticky;
+  top: var(--rail);
+  z-index: 2;
   display: flex;
   justify-content: space-between;
   align-items: baseline;
   gap: var(--step);
-  padding-bottom: var(--step);
-  font-size: 1rem;
-  font-weight: 600;
+  margin: 0 calc(var(--step) * -2);
+  padding: var(--step) calc(var(--step) * 2);
+  background: var(--paper);
+  border-bottom: 1px solid var(--rule);
+  font-size: var(--t-title);
+  font-weight: 650;
   font-stretch: 112%;
+  line-height: 1.25;
+}
+
+/* Accent use 3 of 3: the group the ordering rules would have you do next.
+   It is an underline rather than a background or a badge, so it can appear
+   and move without shifting a single row. */
+.category[data-focus='true'] .category-head {
+  border-bottom: 2px solid var(--mark);
 }
 
 .category-count {
   color: var(--ink-2);
   font-weight: 400;
-  font-size: 0.875rem;
+  font-size: var(--t-meta);
   font-stretch: 100%;
 }
 
+/* A finished group that finished *since* the last sort stays exactly where
+   your thumb left it and just reads as done. Only the sort moves things. */
+.category[data-settled='false'][data-complete='true'] .category-head {
+  color: var(--done);
+  border-bottom-color: var(--hair);
+}
+
 .exercise {
+  position: relative;
   display: flex;
   align-items: center;
   gap: var(--step);
   width: 100%;
-  min-height: var(--tap);
+  min-height: var(--row);
   text-align: left;
+}
+
+/* Hairlines between rows, inset to the text column so they run from the name
+   to the count and leave the tally gutter clear. Without them a wrapped name
+   was indistinguishable from two separate exercises. */
+.exercise + .exercise::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: calc(var(--tap) - 4px);
+  right: 0;
+  border-top: 1px solid var(--hair);
 }
 
 .exercise-name {
   flex: 1;
   min-width: 0;
+  font-size: var(--t-row);
+  /* One row, one line, always. A name long enough to wrap used to double the
+     row height and break the rhythm the whole screen is scanned by. */
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .exercise[data-done='true'] .exercise-name {
@@ -292,17 +441,25 @@ button {
 }
 
 .skip-badge {
-  font-size: 0.75rem;
+  font-size: var(--t-meta);
   color: var(--ink-2);
   white-space: nowrap;
+  flex: 0 0 auto;
 }
 
-/* Completed categories collapse to one struck-through line and sink below the
-   hairline, so the top of the screen is only ever what is still actionable. */
+/* Groups that were already finished at the last sort collapse to one
+   struck-through line and sink below the rule, so the top of the screen is
+   only ever what is still actionable. */
 .completed-zone {
   border-top: 1px solid var(--rule);
   padding-top: calc(var(--step) * 2);
   margin-top: calc(var(--step) * 2);
+}
+
+.completed-label {
+  margin: 0 0 var(--step);
+  font-size: var(--t-meta);
+  color: var(--ink-2);
 }
 
 .category-collapsed {
@@ -311,7 +468,7 @@ button {
   align-items: baseline;
   width: 100%;
   gap: var(--step);
-  min-height: 36px;
+  min-height: var(--tap);
   color: var(--done);
 }
 
@@ -374,7 +531,7 @@ button {
 
 .sheet h2 {
   margin: 0 0 var(--step);
-  font-size: 1.125rem;
+  font-size: var(--t-title);
   font-stretch: 112%;
 }
 
@@ -396,8 +553,10 @@ button {
   align-items: baseline;
   gap: var(--step);
   margin: calc(var(--step) * 4) 0 calc(var(--step) * 2);
-  font-size: 1rem;
-  font-weight: 600;
+  padding-bottom: var(--step);
+  border-bottom: 1px solid var(--rule);
+  font-size: var(--t-title);
+  font-weight: 650;
   font-stretch: 112%;
 }
 
@@ -408,14 +567,14 @@ button {
 }
 
 .stat-value {
-  font-size: 1.75rem;
+  font-size: 2rem;
   font-stretch: 112%;
-  font-weight: 600;
+  font-weight: 700;
   line-height: 1.1;
 }
 
 .stat-label {
-  font-size: 0.8125rem;
+  font-size: var(--t-meta);
   color: var(--ink-2);
 }
 
@@ -427,18 +586,26 @@ button {
 
 .month-label {
   text-align: center;
-  font-size: 0.6875rem;
+  font-size: var(--t-micro);
   color: var(--ink-2);
   padding-bottom: 4px;
 }
 
+/* Every day is a control: tapping marks or unmarks it by hand. The grid keeps
+   its square cells, but never below a thumb. */
 .day {
   aspect-ratio: 1;
+  min-height: var(--tap);
   display: grid;
   place-items: center;
-  font-size: 0.75rem;
+  font-size: var(--t-meta);
   color: var(--ink-2);
   border: 1px solid transparent;
+}
+
+.day:disabled {
+  opacity: 0.35;
+  cursor: default;
 }
 
 .day[data-active='true'] {
@@ -487,8 +654,8 @@ button {
   justify-content: space-between;
   gap: var(--step);
   padding: var(--step) 0;
-  border-bottom: 1px solid var(--rule);
-  font-size: 0.875rem;
+  border-bottom: 1px solid var(--hair);
+  font-size: var(--t-meta);
 }
 
 .cycle-history .detail {
@@ -504,7 +671,7 @@ button {
 
 .field span {
   display: block;
-  font-size: 0.8125rem;
+  font-size: var(--t-meta);
   color: var(--ink-2);
   margin-bottom: 4px;
 }
@@ -536,7 +703,7 @@ select {
 
 .muted {
   color: var(--ink-2);
-  font-size: 0.875rem;
+  font-size: var(--t-meta);
 }
 
 .error {

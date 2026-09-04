@@ -26,7 +26,8 @@ test.describe('screens', () => {
     await signIn(page)
     await shot('1-today-empty')
 
-    // Part-way through a cycle: one category done and collapsed, a daily ticked.
+    // Part-way through a cycle: one group finished in place (the order is
+    // frozen, so it does not collapse until you ask), and a daily ticked.
     const cat = page.locator('.category').first()
     for (const n of await cat.locator('.exercise-name').allTextContents()) {
       await mark(page, n.trim()).click()
@@ -34,6 +35,10 @@ test.describe('screens', () => {
     const daily = page.getByRole('region', { name: 'Every day' })
     await mark(page, (await daily.locator('.daily-name').first().textContent()).trim()).click()
     await shot('2-today-partial')
+
+    // And the same state after a re-sort, where the finished group collapses.
+    await page.getByRole('button', { name: 'Re-sort' }).click()
+    await shot('2b-today-resorted')
 
     await page.getByRole('button', { name: 'History' }).click()
     await expect(page.getByText('day streak')).toBeVisible()

@@ -1,0 +1,15 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "update active_days set manual = false where user_id = $1 and day = $2",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Date"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "ecf33badfb017879e197a25b579667c4c3d60e397e10bc2d96e0d255d433ecf6"
+}

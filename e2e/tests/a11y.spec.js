@@ -2,7 +2,7 @@ import { expect, psql, test } from '../fixtures.js'
 
 const mark = (app, name) => app.getByRole('checkbox', { name, exact: true })
 
-test('D1 — tally marks are keyboard reachable and toggle on Space and Enter', async ({ app }) => {
+test('D1 — exercise rows are keyboard reachable and toggle on Space and Enter', async ({ app }) => {
   const first = app.locator('.exercise-name').first()
   const name = (await first.textContent()).trim()
   const target = mark(app, name)
@@ -29,11 +29,13 @@ test('D1 — tally marks are keyboard reachable and toggle on Space and Enter', 
   await expect(mark(app, name)).toHaveAttribute('aria-checked', 'false')
 })
 
-test('D1 — Tab reaches every tally mark on Today', async ({ app }) => {
+test('D1 — Tab reaches every exercise row on Today', async ({ app }) => {
   const total = await app.getByRole('checkbox').count()
   const reached = new Set()
 
-  for (let i = 0; i < 80 && reached.size < total; i++) {
+  // The catalogue is long and the hero controls come first, so the budget has
+  // to be comfortably more than one Tab per checkbox.
+  for (let i = 0; i < total * 3 + 20 && reached.size < total; i++) {
     await app.keyboard.press('Tab')
     const label = await app.evaluate(() => {
       const el = document.activeElement

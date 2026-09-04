@@ -2,10 +2,15 @@
 
 A home exercise tracker for one person and one phone.
 
-Tick exercises off as you do them. The ones you haven't done stay at the top,
-and the muscle group you've been avoiding sorts above the ones you haven't.
-When the list is finished — or when you decide you've had enough of it — one
-button starts the next cycle.
+Tick exercises off as you do them — tapping anywhere on the row, name included.
+The ones you haven't done stay at the top, and the muscle group you've been
+avoiding sorts above the ones you haven't. When the list is finished — or when
+you decide you've had enough of it — one button starts the next cycle.
+
+The order holds still while you work. It is recomputed when you open the app,
+on a new day, on a new cycle, and when you tap `Re-sort` — never under your
+thumb mid-set. `Next up:` in the header names the least-worked unfinished group
+and scrolls you to it without moving anything.
 
 Two things are tracked, and they age differently:
 
@@ -13,6 +18,10 @@ Two things are tracked, and they age differently:
   (default 21), then pruned.
 - **That you exercised at all on a given day** is kept forever. This is the
   record the year view is built from, and nothing deletes it.
+
+A day counts once you have done `DAY_MIN_EXERCISES` (default 4) exercises from
+the rotation. The daily band doesn't count towards it — crunches and a plank are
+not a session. Tap any day on the calendar to mark or unmark it by hand.
 
 ## Stack
 
@@ -40,8 +49,8 @@ openssl rand -hex 64     # COOKIE_SECRET
 
 `COOKIE_SECRET` must stay stable across restarts or your phone gets signed out
 every deploy. `ADMIN_INITIAL_PASSWORD` is used only on the very first boot,
-when the `users` table is empty, to create `admin` along with a starter set of
-18 no-equipment exercises and cycle 1. Change it in Settings afterwards — the
+when the `users` table is empty, to create `admin` along with the starter
+catalogue in `src/seed.rs` and cycle 1. Change it in Settings afterwards — the
 server logs a warning until you do.
 
 ```sh
@@ -64,6 +73,36 @@ insert into cycles (user_id, seq, started_on)
 ```
 
 You'll then need to add exercises through Settings.
+
+## Forgetting the password
+
+Not a link on the login screen — there is no email here and no second factor, so
+a reset form would just be a weaker second way in. It is a command on the box
+that owns the database:
+
+```sh
+make reset-password            # USER=admin by default, on the server
+make reset-password-local      # against the database in ./.env
+```
+
+It prompts for the new password on stdin (so it never reaches your shell
+history), changes one column, and drops that user's sessions. Nothing else is
+touched.
+
+**Do not** recover by emptying the `users` table so `ADMIN_INITIAL_PASSWORD`
+fires again. Every data table cascades off `users`, including the permanent
+`active_days` record — that would trade your year view for a password.
+
+## Changing the exercise list
+
+`src/seed.rs` holds the catalogue. It is applied at boot to any user who has not
+seen it, guarded by the `seed_marks` table so a restart can't resurrect
+something you archived. To re-offer an edited catalogue, bump `CATALOGUE_SEED`.
+
+Seeding merges by name: an exercise you already have keeps its row and history
+and just takes the catalogue's muscle group and cadence. Anything the catalogue
+doesn't mention is left alone. Day to day, though, Settings is the place to add,
+edit and archive — the catalogue is only the starting point.
 
 ## Development
 
@@ -135,10 +174,16 @@ Worth knowing before changing anything:
   means untick. Completed earlier in the cycle means log today as a repeat, so
   the day still counts.
 
+- **The order is frozen between sorts.** `organise()` is unchanged and still
+  runs live; `freezeOrder`/`applyOrder` in `web/src/lib/sort.js` decide when its
+  answer is applied. Counts stay live inside a frozen order.
+- **A day is recomputed, not incremented.** `recount_day` in
+  `src/routes/state.rs` re-derives it from the logs on every tick and untick, so
+  the threshold can change without stranding old rows. `active_days.manual` is
+  the override and the recount never removes it.
+
 `docs/DECISIONS.md` has the reasoning. `docs/DESIGN.md` covers the visual
 system. `docs/TODO.md` tracks what's left, including the deferred PWA/offline
 work and the HTTPS it depends on.
 
-`docs/HANDOFF.md` is the browser-testing brief. The UI has never been looked at
-— it was built and verified through the API only, because the host has no
-browser — so that document lists what needs checking on a machine that has one.
+`docs/HANDOFF.md` is the original browser-testing brief.

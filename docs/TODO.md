@@ -19,6 +19,7 @@ Living checklist. Each step is one commit. Update as things land so this can be 
 - [x] 13. Settings — manage exercises, cadence toggle, reorder, change password
 - [x] 14. Dockerfile + docker-compose + README
 - [x] 15. Browser review + Playwright suite (`e2e/`) — see "From browser review"
+- [x] 16. Hierarchy pass, frozen ordering, earned days, `reset-password`, the real catalogue
 
 ## Deferred (consciously cut from v1)
 
@@ -35,11 +36,20 @@ Living checklist. Each step is one commit. Update as things land so this can be 
 ## Known gaps
 
 - **Reorder has no UI.** The `reorder` op, the server handler and the sort
-  tie-break all work, but Settings has no drag handle to drive it. Manual order
-  is only the last tie-break anyway, so this is cosmetic.
+  tie-break all work, but Settings has no drag handle to drive it. It matters a
+  little more now that the order is frozen between sorts, since manual order is
+  what breaks ties inside a group.
 - **Reduced-motion covers ticking, not the progress rule.** The tally slash is
   suppressed under `prefers-reduced-motion`, but the header fill still animates
   its width. Small, and nobody has complained yet because nobody has used it.
+
+- **The old starter set survives alongside the catalogue.** Seeding merges by
+  exact name, so near-plurals remain as separate rows: `Push-ups` next to
+  `Push up`, `Leg raises` next to `Leg raise`, `Diamond push-ups` next to
+  `Diamond push-up`, plus `Superman`, `Bird dog`, `Reverse snow angel`,
+  `Hollow hold`, `Russian twists`, `Wide push-ups`, `Pike push-ups`,
+  `Arm circles`, `Calf raises`, `Glute bridge` and `Donkey kicks`. Archive what
+  you do not want in Settings — the merge was the chosen behaviour, not a bug.
 
 ## From browser review
 
@@ -60,7 +70,9 @@ judgement rather than from scratch.
 
 - **A3 — the double rule read as one line.** `.band-end` had its two hairlines
   1px apart, which at phone density is a single slightly-thick rule; the whole
-  "above resets nightly, below persists" signal was gone. Now 3px apart.
+  "above resets nightly, below persists" signal was gone. Widened to 3px apart —
+  and then removed entirely in the hierarchy pass below, because 3px did not
+  save it either. The band carries its own ground tone and label now.
 
 - **B2 — the confirm sheet promised something the sort does not do.** It said
   skipped exercises "will carry to the **top of your next cycle**". They do not:
@@ -93,17 +105,49 @@ judgement rather than from scratch.
 
 ### Open — needs a decision, not a fix
 
-- **The list re-sorts under your thumb.** Ticking sinks the row within its
-  category *and* reorders the categories, so the row below the one you just
-  tapped slides up into its place immediately. Mid-workout, one-handed, that is
-  a double-tap waiting to happen. The ordering rules are the point of the app so
-  the answer is not to stop sorting; the options are to defer the re-sort until
-  the view is next opened, or to animate the move so it is legible. Either
-  changes `docs/DESIGN.md`, so it is written up rather than fixed.
-
 - **`Remove` uses the browser's native `confirm()`.** It is the only thing in
   the app that does, and it looks nothing like the end-cycle sheet next to it.
   Worth routing through the same sheet component.
+
+## From the hierarchy pass
+
+The screen was minimal but flat — one undifferentiated column of 16px text with
+nowhere for the eye to land — and three behaviours were actively getting in the
+way. All fixed; `docs/DESIGN.md` and `docs/DECISIONS.md` carry the reasoning.
+
+### Fixed
+
+- **No hierarchy.** Four tokenised type steps replace scattered rem literals.
+  The cycle count is now a 2.5rem hero, group headings step up to 1.1875rem with
+  a rule under them and **stick** to the progress rail so the muscle group never
+  scrolls out of sight, and rows are separated by an inset hairline.
+
+- **"Double lines".** Two separate problems wearing one name. `.exercise-name`
+  had no `nowrap`/ellipsis, so a long name wrapped to a second line and — with
+  no separators between rows — was indistinguishable from two adjacent
+  exercises. And the literal double rule under the daily band read as one thick
+  line at phone density while claiming to encode "above resets nightly, below
+  persists". The band now has its own ground tone and a label; the double rule
+  is gone.
+
+- **The list re-sorted under your thumb.** Now frozen between sorts
+  (`freezeOrder`/`applyOrder` in `sort.js`), retaken on a new day, a new cycle,
+  or `Re-sort`. `Next up:` reads the live rules and scrolls without moving
+  anything. A group finished now reads as done in place rather than collapsing.
+
+- **Only the 22px glyph was tappable.** The whole row is a
+  `<button role="checkbox">`, so tapping the name strikes it out.
+
+- **One tick marked the whole day.** A day now needs `DAY_MIN_EXERCISES`
+  (default 4) rotation exercises, dailies excluded, and any day can be marked or
+  unmarked by hand from the calendar.
+
+- **Forgotten passwords cost everything.** `bootstrap` only fires on an empty
+  `users` table, so recovery meant deleting the user — which cascaded through
+  `exercises`, `exercise_logs` and the permanent `active_days` record.
+  `make reset-password` changes one column and nothing else.
+
+See "Known gaps" above for what this pass deliberately left alone.
 
 - **`cargo build` fails on a host whose `DATABASE_URL` points at an unmigrated
   database** — the sqlx macros check the live schema, and there is no schema

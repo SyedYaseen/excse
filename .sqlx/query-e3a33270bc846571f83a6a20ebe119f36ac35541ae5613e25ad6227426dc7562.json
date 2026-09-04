@@ -1,0 +1,22 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "select id from users u\n          where not exists (\n              select 1 from seed_marks m\n               where m.user_id = u.id and m.seed = $1\n          )",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Uuid"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text"
+      ]
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "e3a33270bc846571f83a6a20ebe119f36ac35541ae5613e25ad6227426dc7562"
+}

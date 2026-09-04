@@ -1,10 +1,10 @@
-import { expect, signIn, test } from '../fixtures.js'
+import { exerciseCount, expect, signIn, test } from '../fixtures.js'
 
 test('signs in and lands on Today with a full cycle', async ({ app }) => {
   await expect(app.getByText(/^Cycle 1$/)).toBeVisible()
   await expect(app.getByText(/\d+ left/)).toBeVisible()
-  // 18 starter exercises: 2 daily, 16 cycle.
-  await expect(app.getByRole('checkbox')).toHaveCount(18)
+  // Every exercise in the catalogue is a row, and every row is a control.
+  await expect(app.getByRole('checkbox')).toHaveCount(exerciseCount())
 })
 
 test('no console errors on a normal load', async ({ page }) => {
@@ -21,7 +21,7 @@ test('no console errors on a normal load', async ({ page }) => {
   expect(errors).toEqual([])
 })
 
-test('every tally mark meets the 44px touch target', async ({ app }) => {
+test('every exercise row meets the 44px touch target', async ({ app }) => {
   const marks = app.getByRole('checkbox')
   for (let i = 0; i < (await marks.count()); i++) {
     const box = await marks.nth(i).boundingBox()

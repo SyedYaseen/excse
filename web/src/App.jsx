@@ -1,17 +1,28 @@
-import { useEffect, useState, useSyncExternalStore } from 'react'
+import { useEffect, useRef, useState, useSyncExternalStore } from 'react'
 import { today as todayISO } from './lib/dates.js'
-import { cycleProgress, isDone, loggedOn, organise } from './lib/sort.js'
+import {
+  applyOrder,
+  cycleProgress,
+  freezeOrder,
+  loggedOn,
+  organise,
+  suggestNext,
+} from './lib/sort.js'
 import { actions, clearLocal, getSnapshot, subscribe } from './lib/store.js'
 import { flush, refresh, startAutoSync } from './lib/sync.js'
 import { api } from './lib/api.js'
 import { DailyBand } from './components/DailyBand.jsx'
-import { Rotation } from './components/Rotation.jsx'
+import { categoryId, Rotation } from './components/Rotation.jsx'
 import { CycleButton } from './components/CycleButton.jsx'
 import { History } from './components/History.jsx'
 import { Login } from './components/Login.jsx'
 import { Settings } from './components/Settings.jsx'
 
 const THEME_KEY = 'exse.theme'
+
+// The count owns the top of the screen on Today. On the other tabs it would
+// otherwise sit empty, so the view name takes the slot instead.
+const TITLES = { history: 'History', settings: 'Settings' }
 
 function useTheme() {
   const [theme, setTheme] = useState(() => localStorage.getItem(THEME_KEY) || 'system')
@@ -61,6 +72,8 @@ export default function App() {
   const today = useToday()
 
   const [booted, setBooted] = useState(false)
+  const [resortNonce, setResortNonce] = useState(0)
+  const orderRef = useRef({ key: null, order: null })
 
   useEffect(() => {
     const stop = startAutoSync()
@@ -73,9 +86,29 @@ export default function App() {
   if (!state && !booted) return <main className="app" />
   if (status.authed === false || !state) return <Login onSignedIn={refresh} />
 
-  const { daily, categories } = organise(state.exercises, state.logs, today)
+  const live = organise(state.exercises, state.logs, today)
   const progress = cycleProgress(state.exercises)
   const doneToday = loggedOn(state.logs, today)
+
+  // The ordering rules run when you ask, not after every tick. Re-sorting
+  // under a thumb mid-set moved the next row into the space the last one
+  // vacated -- a double-tap waiting to happen, and it lost your place in the
+  // muscle group you were working through. The snapshot is retaken on a new
+  // day, on a new cycle, and on Re-sort; between those, nothing moves.
+  const orderKey = `${today}:${state.cycle.id}:${resortNonce}`
+  if (orderRef.current.key !== orderKey) {
+    orderRef.current = { key: orderKey, order: freezeOrder(live) }
+  }
+  const { daily, categories } = applyOrder(live, orderRef.current.order)
+
+  // Read live, so it keeps pointing at the least-worked unfinished group
+  // without anything changing position. Naming it is free; moving it is not.
+  const focus = suggestNext(live)
+
+  function jumpToFocus() {
+    const el = focus && document.getElementById(categoryId(focus))
+    el?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+  }
 
   function toggle(exercise) {
     // Untick only ever retracts today's own mark. An exercise completed
@@ -116,21 +149,43 @@ export default function App() {
               }}
             />
           </div>
-          <div className="progress-meta">
-            <span>
-              <strong>Cycle {state.cycle.seq}</strong>
-            </span>
-            <span className="num">
-              {status.pending > 0 && <span className="unsynced">Not saved yet </span>}
-              {view === 'today' && (progress.complete ? 'all done' : `${left} left`)}
-            </span>
-          </div>
         </header>
+
+        <div className="hero">
+          <div className="progress-meta">
+            <p className="hero-count num">
+              {view !== 'today' ? (
+                <strong>{TITLES[view]}</strong>
+              ) : progress.complete ? (
+                <strong>all done</strong>
+              ) : (
+                <>
+                  <strong>{left}</strong> left
+                </>
+              )}
+            </p>
+            <p className="hero-sub">
+              Cycle {state.cycle.seq}
+              {status.pending > 0 && <span className="unsynced">Not saved yet</span>}
+            </p>
+          </div>
+
+          {view === 'today' && (
+            <div className="hero-actions">
+              {focus && (
+                <button className="jump" onClick={jumpToFocus}>
+                  Next up: {focus}
+                </button>
+              )}
+              <button onClick={() => setResortNonce((n) => n + 1)}>Re-sort</button>
+            </div>
+          )}
+        </div>
 
         {view === 'today' && (
           <>
             <DailyBand daily={daily} logs={state.logs} today={today} onToggle={toggle} />
-            <Rotation categories={categories} onToggle={toggle} />
+            <Rotation categories={categories} focus={focus} onToggle={toggle} />
             <CycleButton
               progress={progress}
               skipped={skipped}

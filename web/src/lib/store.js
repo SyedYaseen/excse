@@ -126,6 +126,8 @@ export function reduce(s, op) {
       return upsertExercise(s, op)
     case 'archiveExercise':
       return { ...s, exercises: s.exercises.filter((e) => e.id !== op.id) }
+    case 'markDay':
+      return markDay(s, op)
     case 'reorder':
       return {
         ...s,
@@ -139,17 +141,44 @@ export function reduce(s, op) {
   }
 }
 
+/**
+ * How many *rotation* exercises are logged on a day. The daily band does not
+ * count: ticking off crunches is not a workout, and the calendar should not
+ * claim it was. Mirrors recount_day in src/routes/state.rs.
+ */
+export function rotationCount(s, logs, day) {
+  const cadence = new Map(s.exercises.map((e) => [e.id, e.cadence]))
+  return logs.filter((l) => l.day === day && cadence.get(l.exerciseId) === 'cycle').length
+}
+
+/** Whether the logs alone earn the day a place on the calendar. */
+export function earnsDay(s, logs, day) {
+  return rotationCount(s, logs, day) >= (s.dayThreshold ?? 4)
+}
+
+/**
+ * Re-derives whether one day sits on the calendar, from the logs plus any
+ * manual override. Recomputed rather than incremented, so tick and untick are
+ * symmetric and the threshold can change without stranding old rows.
+ */
+function withDay(s, logs, day) {
+  const on = earnsDay(s, logs, day) || (s.manualDays ?? []).includes(day)
+  const has = s.activeDays.includes(day)
+  if (on === has) return s.activeDays
+  return on ? [...s.activeDays, day].sort() : s.activeDays.filter((d) => d !== day)
+}
+
 function tick(s, { exerciseId, day }) {
   const ex = s.exercises.find((e) => e.id === exerciseId)
   if (!ex) return s
 
   const logged = s.logs.some((l) => l.exerciseId === exerciseId && l.day === day)
+  const logs = logged ? s.logs : [...s.logs, { exerciseId, day }]
+
   return {
     ...s,
-    logs: logged ? s.logs : [...s.logs, { exerciseId, day }],
-    activeDays: s.activeDays.includes(day)
-      ? s.activeDays
-      : [...s.activeDays, day].sort(),
+    logs,
+    activeDays: withDay(s, logs, day),
     // Only the first completion of a cycle sets the date. Ticking it again
     // later in the same cycle is a repeat: it logs the day and nothing else.
     exercises: s.exercises.map((e) =>
@@ -160,18 +189,32 @@ function tick(s, { exerciseId, day }) {
   }
 }
 
+/**
+ * Marking is an override, not a deletion. Clearing it on a day the logs still
+ * earn leaves the day marked -- unmarking says "I did not train", it does not
+ * pretend the exercises never happened.
+ */
+function markDay(s, { day, marked }) {
+  const manualDays = marked
+    ? (s.manualDays ?? []).includes(day)
+      ? s.manualDays
+      : [...(s.manualDays ?? []), day].sort()
+    : (s.manualDays ?? []).filter((d) => d !== day)
+
+  const next = { ...s, manualDays }
+  return { ...next, activeDays: withDay(next, next.logs, day) }
+}
+
 function untick(s, { exerciseId, day }) {
   const ex = s.exercises.find((e) => e.id === exerciseId)
   if (!ex) return s
 
   const logs = s.logs.filter((l) => !(l.exerciseId === exerciseId && l.day === day))
-  // The day only stops counting once nothing else was logged against it.
-  const stillUsed = logs.some((l) => l.day === day)
 
   return {
     ...s,
     logs,
-    activeDays: stillUsed ? s.activeDays : s.activeDays.filter((d) => d !== day),
+    activeDays: withDay(s, logs, day),
     exercises: s.exercises.map((e) =>
       e.id === exerciseId && e.cadence === 'cycle' && e.completedOn === day
         ? { ...e, completedOn: null }
@@ -248,4 +291,5 @@ export const actions = {
   upsertExercise: (e) => dispatch({ type: 'upsertExercise', ...e }),
   archiveExercise: (id) => dispatch({ type: 'archiveExercise', id }),
   reorder: (ids) => dispatch({ type: 'reorder', ids }),
+  markDay: (day, marked) => dispatch({ type: 'markDay', day, marked }),
 }

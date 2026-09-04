@@ -1,0 +1,15 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "insert into active_days (user_id, day) values ($1, $2)\n             on conflict do nothing",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Date"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "df4f85e3aef6940355b02a18e0978d25c9cd2d52741f7b50580a9c38a091af2d"
+}

@@ -92,6 +92,65 @@ export function organise(exercises, logs, today) {
   return { daily, categories, doneToday }
 }
 
+/**
+ * A positional snapshot of an organised list.
+ *
+ * The ordering rules are the point of this app, but running them after every
+ * tick moves the row under your thumb and loses your place in a muscle group
+ * mid-set. So they run when you ask -- on open, on a new day, on a new cycle,
+ * or on Re-sort -- and the answer is frozen until the next time.
+ */
+export function freezeOrder(organised) {
+  return {
+    categories: organised.categories.map((c) => c.name),
+    exercises: Object.fromEntries(
+      organised.categories.map((c) => [c.name, c.exercises.map((e) => e.id)]),
+    ),
+    // Which categories were already finished at snapshot time. Only these
+    // collapse into the completed zone; one you finish *now* reads as done
+    // where it stands rather than vanishing.
+    settled: organised.categories.filter((c) => c.complete).map((c) => c.name),
+  }
+}
+
+/** Re-imposes a snapshot on freshly organised data. Counts stay live. */
+export function applyOrder(organised, order) {
+  if (!order) return organised
+
+  const rank = new Map(order.categories.map((name, i) => [name, i]))
+  const settled = new Set(order.settled)
+
+  // Anything added since the snapshot has no rank and lands at the end, which
+  // is the one place it cannot displace something you are working through.
+  const at = (name) => (rank.has(name) ? rank.get(name) : Number.MAX_SAFE_INTEGER)
+
+  const categories = organised.categories
+    .map((c) => ({
+      ...c,
+      settled: settled.has(c.name),
+      exercises: inSnapshotOrder(c.exercises, order.exercises[c.name]),
+    }))
+    .sort((a, b) => at(a.name) - at(b.name) || a.name.localeCompare(b.name))
+
+  return { ...organised, categories }
+}
+
+function inSnapshotOrder(exercises, ids) {
+  if (!ids) return exercises
+  const rank = new Map(ids.map((id, i) => [id, i]))
+  const at = (e) => (rank.has(e.id) ? rank.get(e.id) : Number.MAX_SAFE_INTEGER)
+  return [...exercises].sort((a, b) => at(a) - at(b))
+}
+
+/**
+ * The muscle group the ordering rules would put first right now -- least
+ * complete, most skip debt, longest untrained. Read live rather than from the
+ * snapshot, so it keeps pointing at the right group without anything moving.
+ */
+export function suggestNext(organised) {
+  return organised.categories.find((c) => !c.complete)?.name ?? null
+}
+
 // Infinity - Infinity is NaN, which would corrupt the comparator.
 function cmpDaysSince(a, b) {
   if (a === b) return 0

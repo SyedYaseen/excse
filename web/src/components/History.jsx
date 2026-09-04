@@ -1,13 +1,36 @@
 import { useEffect, useRef, useState } from 'react'
 import { addDays, fromISO, shortDate, toISO } from '../lib/dates.js'
 import { longestStreak, streak } from '../lib/sort.js'
+import { actions, earnsDay, rotationCount } from '../lib/store.js'
 import { TallyDot } from './TallyMark.jsx'
 
 const WEEKDAYS = ['M', 'T', 'W', 'T', 'F', 'S', 'S']
 
-function Month({ activeDays, today }) {
+function Month({ state, activeDays, today }) {
   const [offset, setOffset] = useState(0)
+  const [note, setNote] = useState('')
   const active = new Set(activeDays)
+
+  /**
+   * Tapping a day is an override, not an edit of what happened. Marking one
+   * on is unconditional; marking one off only clears the override, so a day
+   * you actually trained through stays -- and says so rather than ignoring
+   * the tap.
+   */
+  function toggleDay(iso) {
+    if (active.has(iso)) {
+      const n = rotationCount(state, state.logs, iso)
+      actions.markDay(iso, false)
+      setNote(
+        earnsDay(state, state.logs, iso)
+          ? `${shortDate(iso)} has ${n} exercises logged, so it counts on its own.`
+          : '',
+      )
+    } else {
+      actions.markDay(iso, true)
+      setNote('')
+    }
+  }
 
   const base = fromISO(today)
   const view = new Date(base.getFullYear(), base.getMonth() + offset, 1)
@@ -53,19 +76,29 @@ function Month({ activeDays, today }) {
         {cells.map((date, i) => {
           if (!date) return <div key={`b${i}`} />
           const iso = toISO(date)
+          const on = active.has(iso)
           return (
-            <div
+            <button
               className="day num"
               key={iso}
-              data-active={active.has(iso)}
+              data-active={on}
               data-today={iso === today}
-              title={active.has(iso) ? `Exercised ${shortDate(iso)}` : shortDate(iso)}
+              disabled={iso > today}
+              aria-pressed={on}
+              aria-label={`${shortDate(iso)}${on ? ', exercised' : ''}`}
+              onClick={() => toggleDay(iso)}
             >
-              {active.has(iso) ? <TallyDot on /> : date.getDate()}
-            </div>
+              {on ? <TallyDot on /> : date.getDate()}
+            </button>
           )
         })}
       </div>
+
+      <p className="muted">
+        A day marks itself once you have done {state.dayThreshold ?? 4} exercises
+        outside the daily band. Tap any day to mark it yourself.
+      </p>
+      {note && <p className="muted">{note}</p>}
     </>
   )
 }
@@ -162,7 +195,7 @@ export function History({ state, today }) {
         </div>
       </div>
 
-      <Month activeDays={days} today={today} />
+      <Month state={state} activeDays={days} today={today} />
 
       <div className="section-head">
         <span>The last year</span>

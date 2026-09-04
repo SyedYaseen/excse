@@ -108,38 +108,13 @@ where
     }
 }
 
-/// Starter set: no equipment, doable in a room. Crunches and plank are the
-/// daily staples; everything else rotates once per cycle.
-const STARTER: &[(&str, &str, &str)] = &[
-    ("Crunches", "Core", "daily"),
-    ("Plank", "Core", "daily"),
-    ("Leg raises", "Core", "cycle"),
-    ("Hollow hold", "Core", "cycle"),
-    ("Russian twists", "Core", "cycle"),
-    ("Superman", "Back", "cycle"),
-    ("Bird dog", "Back", "cycle"),
-    ("Reverse snow angel", "Back", "cycle"),
-    ("Push-ups", "Chest", "cycle"),
-    ("Wide push-ups", "Chest", "cycle"),
-    ("Diamond push-ups", "Chest", "cycle"),
-    ("Pike push-ups", "Shoulders", "cycle"),
-    ("Arm circles", "Shoulders", "cycle"),
-    ("Squats", "Legs", "cycle"),
-    ("Lunges", "Legs", "cycle"),
-    ("Calf raises", "Legs", "cycle"),
-    ("Glute bridge", "Glutes", "cycle"),
-    ("Donkey kicks", "Glutes", "cycle"),
-];
-
 /// First-run bootstrap. Exercises carry a user_id foreign key, so they cannot
-/// be seeded by a migration that runs before any user exists -- admin, starter
-/// exercises and cycle 1 are created together in one transaction here.
+/// be seeded by a migration that runs before any user exists -- admin, the
+/// starter catalogue and cycle 1 are created together in one transaction here.
 /// No-ops entirely once any user exists.
 pub async fn bootstrap(db: &PgPool, initial_password: Option<&str>) -> anyhow::Result<()> {
-    let mut tx = db.begin().await?;
-
     let existing: i64 = sqlx::query_scalar!("select count(*) from users")
-        .fetch_one(&mut *tx)
+        .fetch_one(db)
         .await?
         .unwrap_or(0);
     if existing > 0 {
@@ -154,6 +129,8 @@ pub async fn bootstrap(db: &PgPool, initial_password: Option<&str>) -> anyhow::R
         return Ok(());
     };
 
+    let mut tx = db.begin().await?;
+
     let hash = hash_password(password)?;
     let user_id: Uuid = sqlx::query_scalar!(
         "insert into users (username, password_hash) values ('admin', $1) returning id",
@@ -162,19 +139,7 @@ pub async fn bootstrap(db: &PgPool, initial_password: Option<&str>) -> anyhow::R
     .fetch_one(&mut *tx)
     .await?;
 
-    for (i, (name, category, cadence)) in STARTER.iter().enumerate() {
-        sqlx::query!(
-            "insert into exercises (user_id, name, category, cadence, sort_order)
-             values ($1, $2, $3, $4, $5)",
-            user_id,
-            name,
-            category,
-            cadence,
-            i as i32
-        )
-        .execute(&mut *tx)
-        .await?;
-    }
+    let added = crate::seed::apply_for(&mut tx, user_id).await?;
 
     sqlx::query!(
         "insert into cycles (user_id, seq, started_on) values ($1, 1, current_date)",
@@ -186,9 +151,46 @@ pub async fn bootstrap(db: &PgPool, initial_password: Option<&str>) -> anyhow::R
     tx.commit().await?;
 
     tracing::warn!(
-        "created user 'admin' from ADMIN_INITIAL_PASSWORD with {} starter exercises -- \
-         change the password in Settings",
-        STARTER.len()
+        "created user 'admin' from ADMIN_INITIAL_PASSWORD with {added} starter exercises -- \
+         change the password in Settings"
     );
+    Ok(())
+}
+
+/// Out-of-band password reset, driven by `exse reset-password` on the machine
+/// that owns the database.
+///
+/// This exists because the only other way back into a forgotten account was to
+/// empty the `users` table and let `bootstrap` run again -- and every data
+/// table cascades off `users`, so that took the exercises, the logs and the
+/// permanent `active_days` record with it. Recovering access must never cost
+/// the year view. This touches one column and nothing else.
+///
+/// Every session is dropped, so a stolen phone cannot outlive the reset.
+pub async fn set_password(db: &PgPool, username: &str, password: &str) -> anyhow::Result<()> {
+    if password.chars().count() < 8 {
+        anyhow::bail!("password must be at least 8 characters");
+    }
+
+    let hash = hash_password(password)?;
+    let mut tx = db.begin().await?;
+
+    let user_id: Option<Uuid> = sqlx::query_scalar!(
+        "update users set password_hash = $1 where username = $2 returning id",
+        hash,
+        username
+    )
+    .fetch_optional(&mut *tx)
+    .await?;
+
+    let Some(user_id) = user_id else {
+        anyhow::bail!("no user named {username}");
+    };
+
+    sqlx::query!("delete from sessions where user_id = $1", user_id)
+        .execute(&mut *tx)
+        .await?;
+
+    tx.commit().await?;
     Ok(())
 }

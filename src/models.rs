@@ -44,7 +44,13 @@ pub struct State {
     pub logs: Vec<LogEntry>,
     /// Every day the user exercised, ever. Never pruned.
     pub active_days: Vec<NaiveDate>,
+    /// The subset of `active_days` the user marked by hand. Unmarking one of
+    /// these can remove it; the rest are earned by the logs and stay.
+    pub manual_days: Vec<NaiveDate>,
     pub retention_days: i32,
+    /// How many rotation exercises a day needs before it marks itself on the
+    /// calendar. The client mirrors this rule locally, so it has to know it.
+    pub day_threshold: i32,
 }
 
 /// One user intent. The client appends these to an outbox and replays them;
@@ -79,6 +85,14 @@ pub enum Op {
     },
     Reorder {
         ids: Vec<Uuid>,
+    },
+    /// Force a day on or off the calendar by hand, overriding the count-based
+    /// rule. `marked: false` on a day that still meets the threshold on its
+    /// own leaves it marked -- unmarking clears the override, it does not
+    /// pretend the exercises never happened.
+    MarkDay {
+        day: NaiveDate,
+        marked: bool,
     },
 }
 

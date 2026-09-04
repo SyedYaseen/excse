@@ -1,6 +1,16 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { organise, cycleProgress, streak, longestStreak, isDone, loggedOn } from './sort.js'
+import {
+  applyOrder,
+  cycleProgress,
+  freezeOrder,
+  isDone,
+  loggedOn,
+  longestStreak,
+  organise,
+  streak,
+  suggestNext,
+} from './sort.js'
 
 const TODAY = '2026-09-04'
 
@@ -155,4 +165,77 @@ test('longest streak finds the best run anywhere in the history', () => {
   assert.equal(longestStreak(days), 3)
   assert.equal(longestStreak([]), 0)
   assert.equal(longestStreak(['2026-01-01']), 1)
+})
+
+// ---------------------------------------------------------------------------
+// The frozen order -- what stops the list moving under your thumb
+// ---------------------------------------------------------------------------
+
+test('a frozen order survives the tick that would have reordered everything', () => {
+  const back = ex({ category: 'Back', name: 'Deadlift' })
+  const items = [back, ex({ category: 'Back', name: 'Hip thrust' }), ex({ category: 'Chest' })]
+
+  const before = organise(items, [], TODAY)
+  const order = freezeOrder(before)
+  assert.deepEqual(names(before.categories), ['Back', 'Chest'])
+
+  // Finishing Back outright would sink it below Chest on the live rules.
+  const after = organise(
+    items.map((e) => (e.category === 'Back' ? { ...e, completedOn: TODAY } : e)),
+    [],
+    TODAY,
+  )
+  assert.deepEqual(names(after.categories), ['Chest', 'Back'], 'the live rules changed')
+
+  const held = applyOrder(after, order)
+  assert.deepEqual(names(held.categories), ['Back', 'Chest'], 'the list moved under the thumb')
+  assert.equal(held.categories[0].complete, true, 'counts must stay live')
+  assert.equal(held.categories[0].settled, false, 'it finished after the snapshot')
+})
+
+test('rows hold their place within a category too', () => {
+  const a = ex({ category: 'Back', name: 'A', sortOrder: 0 })
+  const b = ex({ category: 'Back', name: 'B', sortOrder: 1 })
+
+  const order = freezeOrder(organise([a, b], [], TODAY))
+  const after = organise([{ ...a, completedOn: TODAY }, b], [], TODAY)
+
+  assert.deepEqual(
+    after.categories[0].exercises.map((e) => e.name),
+    ['B', 'A'],
+    'the live rules sink a done row',
+  )
+  assert.deepEqual(
+    applyOrder(after, order).categories[0].exercises.map((e) => e.name),
+    ['A', 'B'],
+  )
+})
+
+test('a category already finished at snapshot time is settled, and collapses', () => {
+  const items = [
+    ex({ category: 'Chest', completedOn: TODAY }),
+    ex({ category: 'Back' }),
+  ]
+  const organised = organise(items, [], TODAY)
+  const held = applyOrder(organised, freezeOrder(organised))
+  const chest = held.categories.find((c) => c.name === 'Chest')
+  assert.equal(chest.settled, true)
+})
+
+test('anything added since the snapshot lands at the end, never mid-list', () => {
+  const items = [ex({ category: 'Back' }), ex({ category: 'Chest' })]
+  const order = freezeOrder(organise(items, [], TODAY))
+
+  const grown = organise([...items, ex({ category: 'Arms' })], [], TODAY)
+  const held = applyOrder(grown, order)
+  assert.equal(names(held.categories).at(-1), 'Arms')
+})
+
+test('the suggestion reads live, so it points past a group you just finished', () => {
+  const items = [
+    ex({ category: 'Back', completedOn: TODAY }),
+    ex({ category: 'Chest' }),
+  ]
+  assert.equal(suggestNext(organise(items, [], TODAY)), 'Chest')
+  assert.equal(suggestNext(organise([items[0]], [], TODAY)), null, 'nothing left to suggest')
 })

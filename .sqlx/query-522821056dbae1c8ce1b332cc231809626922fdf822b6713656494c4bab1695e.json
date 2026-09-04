@@ -1,0 +1,15 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "insert into active_days (user_id, day, manual) values ($1, $2, true)\n                     on conflict (user_id, day) do update set manual = true",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Date"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "522821056dbae1c8ce1b332cc231809626922fdf822b6713656494c4bab1695e"
+}

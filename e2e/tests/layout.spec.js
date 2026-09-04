@@ -1,4 +1,4 @@
-import { expect, psql, test } from '../fixtures.js'
+import { expect, psql, rotationCount, test } from '../fixtures.js'
 
 /** WCAG relative luminance from an "rgb(r, g, b)" string. */
 function luminance(rgb) {
@@ -72,23 +72,48 @@ test('A4 — the year view opens on the most recent weeks, not the empty past', 
   expect(y.visible).toBeGreaterThan(y.total / 3)
 })
 
-test('A3 — the daily band sits above a rule that reads as two lines', async ({ app }) => {
-  const rule = await app.evaluate(() => {
-    const el = document.querySelector('.band-end')
+test('A3 — the daily band is a zone of its own, not a pair of hairlines', async ({ app }) => {
+  // The boundary used to be two 1px rules 3px apart, which at phone density
+  // read as one thick line and said nothing. It is now carried by ground tone
+  // and a label, which needs no explaining.
+  const band = await app.evaluate(() => {
+    const el = document.querySelector('.daily-band')
+    if (!el) return null
     const cs = getComputedStyle(el)
     return {
-      height: el.getBoundingClientRect().height,
-      top: parseFloat(cs.borderTopWidth),
-      bottom: parseFloat(cs.borderBottomWidth),
+      bg: cs.backgroundColor,
+      pageBg: getComputedStyle(document.body).backgroundColor,
+      label: el.querySelector('.band-label')?.textContent ?? '',
+      full: el.getBoundingClientRect().width >= document.documentElement.clientWidth - 1,
     }
   })
-  expect(rule.top).toBeGreaterThan(0)
-  expect(rule.bottom).toBeGreaterThan(0)
-  // The gap between the hairlines is what makes it read as a double rule.
-  expect(rule.height - rule.top - rule.bottom).toBeGreaterThanOrEqual(2)
+  expect(band, 'no daily band on screen').not.toBeNull()
+  expect(band.bg, 'the band shares the page ground').not.toBe(band.pageBg)
+  expect(band.label).toContain('Every day')
+  expect(band.full, 'the band should run edge to edge').toBe(true)
+  expect(await app.locator('.band-end').count(), 'the double rule is gone').toBe(0)
+})
+
+test('A7 — ticking does not move anything until you ask it to', async ({ app }) => {
+  const order = () =>
+    app.locator('.exercise-name').allTextContents().then((n) => n.map((s) => s.trim()))
+
+  const before = await order()
+  // Finish the whole first group: on the live rules that sinks every row and
+  // drops the category below the others.
+  const first = app.locator('.category').first()
+  const names = (await first.locator('.exercise-name').allTextContents()).map((s) => s.trim())
+  for (const n of names) await app.getByRole('checkbox', { name: n, exact: true }).click()
+
+  await expect(app.locator('.exercise[data-done="true"]')).toHaveCount(names.length)
+  expect(await order(), 'the list re-sorted under the thumb').toEqual(before)
+
+  await app.getByRole('button', { name: 'Re-sort' }).click()
+  await expect(app.locator('.completed-zone .category-collapsed')).toHaveCount(1)
 })
 
 test('A5 — the progress rule fills in proportion to the cycle', async ({ app }) => {
+  const total = rotationCount()
   const width = () =>
     app.evaluate(() => document.querySelector('.progress-fill').getBoundingClientRect().width)
   const track = await app.evaluate(
@@ -101,14 +126,14 @@ test('A5 — the progress rule fills in proportion to the cycle', async ({ app }
     .map((s) => s.trim())
   for (const n of names) await app.getByRole('checkbox', { name: n, exact: true }).click()
 
-  await expect(app.getByText('12 left')).toBeVisible()
+  await expect(app.getByText(`${total - 4} left`)).toBeVisible()
   // The fill is animated, so settle before measuring.
-  await expect.poll(width).toBeCloseTo((track * 4) / 16, 0)
+  await expect.poll(width).toBeCloseTo((track * 4) / total, 0)
 })
 
 test('text meets 4.5:1 against its background in this theme', async ({ app }, testInfo) => {
   const samples = await app.evaluate(() => {
-    const pick = ['.exercise-name', '.category-head', '.progress-meta', '.skip-badge', '.muted', '.stat-label', '.nav button']
+    const pick = ['.exercise-name', '.category-head', '.hero-count', '.hero-sub', '.hero-actions button', '.band-label', '.daily-name', '.progress-meta', '.skip-badge', '.muted', '.stat-label', '.nav button', '.completed-label']
     const out = []
     for (const sel of pick) {
       const el = document.querySelector(sel)

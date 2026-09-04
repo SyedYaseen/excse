@@ -44,46 +44,75 @@ function base(over = {}) {
     pastCycles: [],
     logs: [],
     activeDays: [],
+    manualDays: [],
     retentionDays: 21,
+    // The real default is 4. Two keeps the fixture small while still testing
+    // that a day has to be *earned* rather than triggered by a single tick.
+    dayThreshold: 2,
     ...over,
   }
 }
 
 const find = (s, id) => s.exercises.find((e) => e.id === id)
 
-test('tick records the log, the day, and cycle completion', () => {
+test('tick records the log and cycle completion', () => {
   const s = reduce(base(), { type: 'tick', exerciseId: 'a', day: TODAY })
   assert.deepEqual(s.logs, [{ exerciseId: 'a', day: TODAY }])
-  assert.deepEqual(s.activeDays, [TODAY])
   assert.equal(find(s, 'a').completedOn, TODAY)
 })
 
-test('ticking a daily marks the day but never cycle progress', () => {
-  const s = reduce(base(), { type: 'tick', exerciseId: 'c', day: TODAY })
+test('one exercise does not make a day -- the threshold does', () => {
+  let s = reduce(base(), { type: 'tick', exerciseId: 'a', day: TODAY })
+  assert.deepEqual(s.activeDays, [], 'a single tick claimed a whole day')
+  s = reduce(s, { type: 'tick', exerciseId: 'b', day: TODAY })
   assert.deepEqual(s.activeDays, [TODAY])
+})
+
+test('the daily band never counts towards the day', () => {
+  let s = base({ dayThreshold: 1 })
+  s = reduce(s, { type: 'tick', exerciseId: 'c', day: TODAY })
+  assert.deepEqual(s.activeDays, [], 'crunches alone marked a workout')
   assert.equal(find(s, 'c').completedOn, null)
 })
 
 test('tick is idempotent', () => {
-  let s = base()
+  let s = base({ dayThreshold: 1 })
   const op = { type: 'tick', exerciseId: 'a', day: TODAY }
   s = reduce(reduce(s, op), op)
   assert.equal(s.logs.length, 1)
   assert.equal(s.activeDays.length, 1)
 })
 
-test('untick retracts the day when nothing else was logged', () => {
-  let s = reduce(base(), { type: 'tick', exerciseId: 'a', day: TODAY })
+test('untick retracts the day once it drops below the threshold', () => {
+  let s = base()
+  s = reduce(s, { type: 'tick', exerciseId: 'a', day: TODAY })
+  s = reduce(s, { type: 'tick', exerciseId: 'b', day: TODAY })
+  assert.deepEqual(s.activeDays, [TODAY])
   s = reduce(s, { type: 'untick', exerciseId: 'a', day: TODAY })
   assert.deepEqual(s.activeDays, [], 'a mis-tap left a permanent workout behind')
   assert.equal(find(s, 'a').completedOn, null)
 })
 
-test('untick keeps the day when another exercise is still logged', () => {
+test('marking a day by hand overrides the threshold, and survives an untick', () => {
+  let s = reduce(base(), { type: 'markDay', day: EARLIER, marked: true })
+  assert.deepEqual(s.activeDays, [EARLIER])
+  assert.deepEqual(s.manualDays, [EARLIER])
+
+  s = reduce(s, { type: 'tick', exerciseId: 'a', day: EARLIER })
+  s = reduce(s, { type: 'untick', exerciseId: 'a', day: EARLIER })
+  assert.deepEqual(s.activeDays, [EARLIER], 'a hand-marked day was recounted away')
+})
+
+test('unmarking clears the override but keeps a day the logs earn', () => {
   let s = base()
   s = reduce(s, { type: 'tick', exerciseId: 'a', day: TODAY })
   s = reduce(s, { type: 'tick', exerciseId: 'b', day: TODAY })
-  s = reduce(s, { type: 'untick', exerciseId: 'a', day: TODAY })
+  s = reduce(s, { type: 'markDay', day: TODAY, marked: false })
+  assert.deepEqual(s.activeDays, [TODAY], 'a day that was actually trained was erased')
+  assert.deepEqual(s.manualDays, [])
+
+  s = reduce(s, { type: 'markDay', day: EARLIER, marked: true })
+  s = reduce(s, { type: 'markDay', day: EARLIER, marked: false })
   assert.deepEqual(s.activeDays, [TODAY])
 })
 
@@ -91,7 +120,6 @@ test('a repeat later in the cycle logs the day without moving completion', () =>
   let s = reduce(base(), { type: 'tick', exerciseId: 'a', day: EARLIER })
   s = reduce(s, { type: 'tick', exerciseId: 'a', day: TODAY })
   assert.equal(s.logs.length, 2)
-  assert.deepEqual(s.activeDays, [EARLIER, TODAY])
   assert.equal(find(s, 'a').completedOn, EARLIER)
 })
 
@@ -139,9 +167,10 @@ test('skip debt compounds across cycles and clears on completion', () => {
 
 test('ending a cycle keeps the history it closed', () => {
   let s = reduce(base(), { type: 'tick', exerciseId: 'a', day: TODAY })
+  s = reduce(s, { type: 'tick', exerciseId: 'b', day: TODAY })
   s = reduce(s, { type: 'endCycle', day: TODAY })
   assert.deepEqual(s.activeDays, [TODAY], 'resetting a cycle erased history')
-  assert.equal(s.logs.length, 1)
+  assert.equal(s.logs.length, 2)
 })
 
 test('upsert edits in place and preserves earned skip debt', () => {

@@ -241,7 +241,9 @@ button {
 .band-end {
   border-top: 1px solid var(--rule);
   border-bottom: 1px solid var(--rule);
-  height: 3px;
+  /* 3px of clear air between the hairlines. At 1px the pair read as a single
+     thicker rule on a phone, which loses the whole "two zones" signal. */
+  height: 5px;
   margin: calc(var(--step) * 2) 0 calc(var(--step) * 3);
 }
 
@@ -461,8 +463,8 @@ button {
 
 .month-nav button {
   color: var(--ink-2);
-  min-width: 32px;
-  min-height: 32px;
+  min-width: var(--tap);
+  min-height: var(--tap);
 }
 
 /* The year as 52 columns of 7 marks: a wall of what you have accumulated.
@@ -521,7 +523,8 @@ select {
 .row {
   display: flex;
   align-items: center;
-  gap: var(--step);
+  /* Wide enough that Remove is not a thumb's width from Edit. */
+  gap: calc(var(--step) * 2);
   padding: var(--step) 0;
   border-bottom: 1px solid var(--rule);
 }
@@ -560,6 +563,14 @@ select {
   min-height: var(--tap);
 }
 
+/* Selected state carries weight as well as colour -- colour alone is not a
+   state indicator for anyone who cannot see the difference. */
+.link[aria-pressed='true'] {
+  color: var(--ink);
+  font-weight: 600;
+  text-decoration-thickness: 2px;
+}
+
 /* --- nav ------------------------------------------------------------------ */
 
 .nav {
@@ -579,7 +590,7 @@ select {
 
 .nav button {
   color: var(--ink-2);
-  min-height: 36px;
+  min-height: var(--tap);
   padding: 0 var(--step);
   border-bottom: 2px solid transparent;
 }

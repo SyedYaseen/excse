@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { addDays, fromISO, shortDate, toISO } from '../lib/dates.js'
 import { longestStreak, streak } from '../lib/sort.js'
 import { TallyDot } from './TallyMark.jsx'
@@ -92,8 +92,23 @@ function Year({ activeDays, today }) {
     weeks.push(days)
   }
 
+  // 52 columns need ~670px and a phone gives ~360, so the grid scrolls. It
+  // must open on the right-hand end: the left end is the oldest weeks, which
+  // on any history shorter than a year is a wall of nothing. Opening at
+  // scrollLeft 0 hid ~85% of the marks behind an empty grid.
+  const scroller = useRef(null)
+  useEffect(() => {
+    const el = scroller.current
+    if (el) el.scrollLeft = el.scrollWidth
+  }, [activeDays, today])
+
   return (
-    <div className="year" role="img" aria-label={`${activeDays.length} days exercised`}>
+    <div
+      className="year"
+      ref={scroller}
+      role="img"
+      aria-label={`${activeDays.length} days exercised`}
+    >
       {weeks.map((days) => (
         <div className="year-week" key={days[0]}>
           {days.map((d) => (

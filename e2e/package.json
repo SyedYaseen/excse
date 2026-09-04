@@ -1,0 +1,15 @@
+{
+  "name": "exse-e2e",
+  "version": "1.0.0",
+  "description": "Browser tests for exse. Separate from web/ so the app's own dependency list stays at four.",
+  "scripts": {
+    "test": "playwright test",
+    "screens": "playwright test screens",
+    "report": "playwright show-report"
+  },
+  "type": "module",
+  "devDependencies": {
+    "@playwright/test": "^1.62.1"
+  },
+  "private": true
+}

@@ -43,7 +43,7 @@ export function CycleButton({ progress, skipped, nextSeq, onEnd }) {
           <div className="sheet">
             <h2>End cycle early?</h2>
             <p>
-              {nameList(skipped)} will carry to the top of your next cycle.
+              {nameList(skipped)} will come back first next cycle.
             </p>
             <div className="sheet-actions">
               <button

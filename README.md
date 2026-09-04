@@ -77,13 +77,27 @@ Tests:
 ```sh
 cargo test                   # 19 integration tests, ephemeral databases
 npm --prefix web test        # 31 unit tests
+npm --prefix e2e test        # 56 browser tests, phone viewport, both themes
 ```
+
+`e2e/` drives a running server and a real database rather than starting either
+— bring the app up first. It is a separate npm package on purpose, so `web/`
+keeps its four dependencies and nothing test-related can reach the runtime
+image. See `e2e/README.md`.
 
 `cargo test` uses `#[sqlx::test]`, which creates a throwaway database per test.
 That needs `CREATEDB`:
 
 ```sh
 docker exec postgres psql -U mzusr -d postgres -c "ALTER ROLE exse CREATEDB;"
+```
+
+If `cargo build` fails with a wall of `relation "exercises" does not exist`, the
+sqlx macros are checking a database that has not been migrated yet. Build
+against the committed query cache instead:
+
+```sh
+SQLX_OFFLINE=true cargo build
 ```
 
 ### After changing a SQL query

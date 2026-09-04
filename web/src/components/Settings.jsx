@@ -164,7 +164,7 @@ export function Settings({ state, theme, setTheme, onSignOut }) {
           <button
             key={value}
             className="link"
-            style={{ color: theme === value ? 'var(--ink)' : undefined }}
+            aria-pressed={theme === value}
             onClick={() => setTheme(value)}
           >
             {label}

@@ -1,5 +1,13 @@
 # Handoff — browser testing
 
+> **Done.** This review was carried out on 2026-09-04 in Chromium at 390pt, light and
+> dark. Findings and what was fixed are in `docs/TODO.md` under "From browser review".
+> Groups A–D below are now largely automated in `e2e/` (56 Playwright tests) — run
+> `npm test` there before re-doing any of it by hand. What is left is visual judgement
+> and the one open design question about the list re-sorting as you tick.
+>
+> The rest of this document is kept as the brief it was, and as the setup guide.
+
 The app was built and verified entirely through its API and its test suites. **Nobody
 has ever looked at it.** The host it runs on has no browser, so every claim in
 `docs/DESIGN.md` about how this thing looks is, at present, a claim about the code rather

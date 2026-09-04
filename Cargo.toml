@@ -1,0 +1,36 @@
+[package]
+name = "exse"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+axum = "0.8"
+axum-extra = { version = "0.10", features = ["cookie-signed"] }
+tokio = { version = "1", features = ["rt-multi-thread", "macros", "net", "signal", "time"] }
+tower-http = { version = "0.6", features = ["fs", "trace", "compression-gzip"] }
+
+sqlx = { version = "0.8", features = [
+    "runtime-tokio-rustls",
+    "postgres",
+    "uuid",
+    "chrono",
+    "migrate",
+    "macros",
+] }
+uuid = { version = "1", features = ["v4", "serde"] }
+chrono = { version = "0.4", features = ["serde"] }
+
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+
+argon2 = "0.5"
+rand = "0.8"
+
+dotenvy = "0.15"
+anyhow = "1"
+thiserror = "2"
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+
+[profile.release]
+strip = true

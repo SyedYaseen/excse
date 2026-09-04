@@ -1,0 +1,87 @@
+/* Design tokens. See docs/DESIGN.md before changing any of these.
+   Light palette is defined on bare :root so it is never conditional. Dark is
+   redefined twice: once for the system preference (guarded so an explicit
+   light choice wins) and once for the explicit dark choice. */
+
+:root {
+  --paper: #e8eae6;
+  --raise: #f5f6f3;
+  --rule: #c9cdc7;
+  --ink: #1a1f1c;
+  --ink-2: #5c6360;
+  --done: #8b928d;
+  --mark: #2e4756;
+  --on-mark: #f5f6f3;
+
+  --step: 8px;
+  --tap: 44px;
+  --measure: 34rem;
+  --tick-ms: 140ms;
+
+  color-scheme: light;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) {
+    --paper: #14171a;
+    --raise: #1c2023;
+    --rule: #2c3235;
+    --ink: #e6e9e5;
+    --ink-2: #8d948f;
+    --done: #5a615c;
+    --mark: #7fb2cc;
+    --on-mark: #14171a;
+
+    color-scheme: dark;
+  }
+}
+
+:root[data-theme='dark'] {
+  --paper: #14171a;
+  --raise: #1c2023;
+  --rule: #2c3235;
+  --ink: #e6e9e5;
+  --ink-2: #8d948f;
+  --done: #5a615c;
+  --mark: #7fb2cc;
+  --on-mark: #14171a;
+
+  color-scheme: dark;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background: var(--paper);
+  color: var(--ink);
+  font-family: Archivo, ui-sans-serif, system-ui, sans-serif;
+  font-size: 16px;
+  line-height: 1.45;
+  -webkit-text-size-adjust: 100%;
+  padding: env(safe-area-inset-top) env(safe-area-inset-right)
+    env(safe-area-inset-bottom) env(safe-area-inset-left);
+}
+
+/* Counts sit in a right-aligned column; tabular figures stop the list
+   jittering as numbers change. */
+.num {
+  font-variant-numeric: tabular-nums;
+}
+
+:where(button, [role='checkbox'], a):focus-visible {
+  outline: 2px solid var(--mark);
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}

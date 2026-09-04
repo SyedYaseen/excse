@@ -39,3 +39,6 @@ Living checklist. Each step is one commit. Update as things land so this can be 
 - **Not visually reviewed.** There was no browser on the host to screenshot
   with, so the UI was built to `docs/DESIGN.md` and verified only through the
   API and the build. Expect spacing and type-scale tweaks on first real use.
+  `docs/HANDOFF.md` is the brief for closing this on a machine with a browser —
+  it covers how to reach the app, what to check, and what is deliberate rather
+  than broken.

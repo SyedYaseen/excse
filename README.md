@@ -115,3 +115,7 @@ Worth knowing before changing anything:
 `docs/DECISIONS.md` has the reasoning. `docs/DESIGN.md` covers the visual
 system. `docs/TODO.md` tracks what's left, including the deferred PWA/offline
 work and the HTTPS it depends on.
+
+`docs/HANDOFF.md` is the browser-testing brief. The UI has never been looked at
+— it was built and verified through the API only, because the host has no
+browser — so that document lists what needs checking on a machine that has one.

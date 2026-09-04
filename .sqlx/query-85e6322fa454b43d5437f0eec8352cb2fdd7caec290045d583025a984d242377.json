@@ -1,0 +1,15 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "update exercises set archived_at = now()\n                  where id = $1 and user_id = $2 and archived_at is null",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Uuid"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "85e6322fa454b43d5437f0eec8352cb2fdd7caec290045d583025a984d242377"
+}

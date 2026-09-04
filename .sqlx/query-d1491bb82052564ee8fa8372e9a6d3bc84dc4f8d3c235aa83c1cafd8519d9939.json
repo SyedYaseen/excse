@@ -1,0 +1,16 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "update exercises set sort_order = $1 where id = $2 and user_id = $3",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Int4",
+        "Uuid",
+        "Uuid"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "d1491bb82052564ee8fa8372e9a6d3bc84dc4f8d3c235aa83c1cafd8519d9939"
+}

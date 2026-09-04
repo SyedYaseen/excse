@@ -1,0 +1,18 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "update cycles\n                    set ended_on = $1, ended_early = $2, done_count = $3, total_count = $4\n                  where id = $5",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Date",
+        "Bool",
+        "Int4",
+        "Int4",
+        "Uuid"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "9145e00d925a5fe495a29432e0ea680a7d205f725ba86813123799681162cf78"
+}

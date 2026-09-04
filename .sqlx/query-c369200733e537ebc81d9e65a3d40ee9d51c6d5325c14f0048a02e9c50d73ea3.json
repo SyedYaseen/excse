@@ -1,0 +1,15 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "update exercises set completed_on = $1 where id = $2",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Date",
+        "Uuid"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "c369200733e537ebc81d9e65a3d40ee9d51c6d5325c14f0048a02e9c50d73ea3"
+}

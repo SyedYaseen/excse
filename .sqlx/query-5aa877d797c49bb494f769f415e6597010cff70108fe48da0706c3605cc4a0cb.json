@@ -1,0 +1,16 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "delete from exercise_logs\n                  where user_id = $1 and exercise_id = $2 and day = $3",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Uuid",
+        "Date"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "5aa877d797c49bb494f769f415e6597010cff70108fe48da0706c3605cc4a0cb"
+}

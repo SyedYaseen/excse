@@ -1,0 +1,58 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "select id, seq, started_on, ended_on, ended_early, done_count, total_count\n           from cycles where user_id = $1 and ended_on is null",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "seq",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 2,
+        "name": "started_on",
+        "type_info": "Date"
+      },
+      {
+        "ordinal": 3,
+        "name": "ended_on",
+        "type_info": "Date"
+      },
+      {
+        "ordinal": 4,
+        "name": "ended_early",
+        "type_info": "Bool"
+      },
+      {
+        "ordinal": 5,
+        "name": "done_count",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 6,
+        "name": "total_count",
+        "type_info": "Int4"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      true,
+      false,
+      true,
+      true
+    ]
+  },
+  "hash": "377849c6fe5c85df6ba02ca451c219c17a8512be9b9abac98b4d214641ed68c0"
+}

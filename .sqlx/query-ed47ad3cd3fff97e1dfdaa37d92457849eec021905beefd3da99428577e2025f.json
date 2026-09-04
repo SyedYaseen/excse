@@ -1,0 +1,14 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "update exercises\n                    set skip_streak = case\n                            when completed_on is null then skip_streak + 1\n                            else 0\n                        end\n                  where user_id = $1 and cadence = 'cycle' and archived_at is null",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "ed47ad3cd3fff97e1dfdaa37d92457849eec021905beefd3da99428577e2025f"
+}

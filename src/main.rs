@@ -1,17 +1,8 @@
-mod auth;
-mod error;
-mod routes;
-
 use anyhow::{bail, Context};
-use axum::extract::FromRef;
-use axum::Router;
 use axum_extra::extract::cookie::Key;
+use exse::{auth, build_router, retention, AppState};
 use sqlx::postgres::PgPoolOptions;
-use sqlx::PgPool;
 use std::net::SocketAddr;
-use tower_http::compression::CompressionLayer;
-use tower_http::services::{ServeDir, ServeFile};
-use tower_http::trace::TraceLayer;
 use tracing_subscriber::EnvFilter;
 
 pub struct Config {
@@ -58,23 +49,6 @@ impl Config {
     }
 }
 
-/// Cheap to clone: PgPool is Arc-backed internally and Key is a small byte
-/// array, so this is passed by value the way axum expects rather than wrapped
-/// in another Arc.
-#[derive(Clone)]
-pub struct AppState {
-    pub db: PgPool,
-    pub retention_days: i32,
-    pub cookie_secure: bool,
-    pub cookie_key: Key,
-}
-
-impl FromRef<AppState> for Key {
-    fn from_ref(state: &AppState) -> Self {
-        state.cookie_key.clone()
-    }
-}
-
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
     dotenvy::dotenv().ok();
@@ -98,6 +72,8 @@ async fn main() -> anyhow::Result<()> {
 
     auth::bootstrap(&db, config.admin_initial_password.as_deref()).await?;
 
+    retention::spawn(db.clone(), config.retention_days);
+
     let state = AppState {
         db,
         retention_days: config.retention_days,
@@ -105,17 +81,7 @@ async fn main() -> anyhow::Result<()> {
         cookie_key: Key::from(config.cookie_secret.as_bytes()),
     };
 
-    // The SPA is served last, with index.html as the fallback so client-side
-    // views resolve on a hard refresh. API routes are matched ahead of it.
-    let spa = ServeDir::new(&config.static_dir)
-        .fallback(ServeFile::new(format!("{}/index.html", config.static_dir)));
-
-    let app = Router::new()
-        .nest("/api", routes::api())
-        .fallback_service(spa)
-        .layer(CompressionLayer::new())
-        .layer(TraceLayer::new_for_http())
-        .with_state(state);
+    let app = build_router(state, &config.static_dir);
 
     let addr = SocketAddr::from(([0, 0, 0, 0], config.port));
     let listener = tokio::net::TcpListener::bind(addr)

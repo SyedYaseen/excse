@@ -1,0 +1,29 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "select cadence, completed_on from exercises\n          where id = $1 and user_id = $2 and archived_at is null",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "cadence",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 1,
+        "name": "completed_on",
+        "type_info": "Date"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false,
+      true
+    ]
+  },
+  "hash": "2aeaadf7c61045f232cca76ef026b01e095830240afcdedf43828cd06fbb448f"
+}

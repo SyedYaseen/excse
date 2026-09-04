@@ -1,0 +1,16 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "insert into exercise_logs (user_id, exercise_id, day)\n                 values ($1, $2, $3) on conflict do nothing",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Uuid",
+        "Date"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "260090feb6990ccbe4ede5e4bfc8d7feb8fcc2036e3ddfc9dcef1225de5aa0f4"
+}

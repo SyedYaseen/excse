@@ -1,0 +1,14 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "delete from exercise_logs where day < current_date - $1::int",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Int4"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "dd7cda9ae56cd10fedfe3b6a5c2d749e813e19a0874336c56760469a51cdb591"
+}

@@ -33,8 +33,15 @@ create table exercises (
     -- Consecutive cycles this exercise has been skipped by an early end.
     -- Reset to 0 whenever it is completed. Drives sort priority.
     skip_streak  int  not null default 0,
-    -- Current-cycle completion. NULL = not done this cycle. Unused for 'daily'.
-    completed_at timestamptz,
+    -- Current-cycle completion, as the client's LOCAL day. NULL = not done
+    -- this cycle. Unused for 'daily'.
+    --
+    -- A date rather than a timestamp because "was this completed today?"
+    -- decides whether a tap unticks or logs a repeat, and that question is
+    -- only meaningful in the user's timezone. A server timestamp would also
+    -- be wrong for a tick made offline and synced days later: it would record
+    -- the sync time, not the workout.
+    completed_on date,
     -- Soft delete, so historical logs stay resolvable to a name.
     archived_at  timestamptz,
     created_at   timestamptz not null default now()

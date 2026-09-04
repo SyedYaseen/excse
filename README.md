@@ -68,11 +68,20 @@ You'll then need to add exercises through Settings.
 ## Development
 
 ```sh
+make dev                     # build the UI, run the server on :3005
+make dev-ui                  # plus Vite on :5173 with hot reload
+make deploy                  # push this branch, pull and rebuild on the server
+make help                    # everything else
+```
+
+The underlying commands, if you would rather not use make:
+
+```sh
 cargo run                    # API + serves ./dist on :3005
 npm --prefix web run dev     # Vite dev server, proxies /api to :3005
 ```
 
-Tests:
+Tests (`make check` for the first two, `make test` for all three):
 
 ```sh
 cargo test                   # 19 integration tests, ephemeral databases

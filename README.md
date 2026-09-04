@@ -148,6 +148,14 @@ against the committed query cache instead:
 SQLX_OFFLINE=true cargo build
 ```
 
+### Never edit an applied migration
+
+Not even a comment. sqlx checksums each one and refuses to start with
+"migration N was previously applied but has been modified". Nothing local
+catches it — `cargo test` builds a fresh database per test — so it surfaces as
+a crash-looping container against the one database that already ran the old
+bytes. Corrections go in a new migration.
+
 ### After changing a SQL query
 
 Queries are checked at compile time against `.sqlx/`, so the Docker build needs

@@ -1,7 +1,7 @@
 -- exse initial schema.
 --
 -- The load-bearing idea: current-cycle progress lives on the exercise row
--- (exercises.completed_on), NOT in exercise_logs. That keeps exercise_logs a
+-- (exercises.completed_at), NOT in exercise_logs. That keeps exercise_logs a
 -- pure disposable history table which can be pruned on a plain date window
 -- without ever corrupting cycle state -- even if a cycle outlives the
 -- retention window. See docs/DECISIONS.md.

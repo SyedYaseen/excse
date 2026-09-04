@@ -96,6 +96,21 @@ permanent day record the app promises to keep forever.
 `exse reset-password <username>` (`make reset-password`) changes one column and drops that
 user's sessions. Nothing else is touched, and it requires access to the machine.
 
+## An applied migration is immutable, comments included
+
+sqlx stores a checksum per migration and refuses to boot with *"migration N was
+previously applied but has been modified"*. That includes comment-only edits.
+
+This is easy to trip over precisely because nothing local catches it:
+`#[sqlx::test]` builds a fresh database per test, and any development database
+you recreate starts from an empty `_sqlx_migrations`. The failure only appears
+against a database that already ran the old bytes — which is production.
+
+`001_init.sql`'s header comment therefore still says `completed_at`. The column
+has always been `completed_on`; the correction lives here rather than in that
+file, and the file stays exactly as it was applied. Corrections go in a new
+migration or in these docs, never in an old one.
+
 ## Starter exercises are seeded from Rust, guarded by a table
 
 Exercises carry a `user_id` foreign key, so a migration that runs before any user exists cannot

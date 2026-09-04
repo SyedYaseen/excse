@@ -1,7 +1,17 @@
-/* Design tokens. See docs/DESIGN.md before changing any of these.
-   Light palette is defined on bare :root so it is never conditional. Dark is
-   redefined twice: once for the system preference (guarded so an explicit
-   light choice wins) and once for the explicit dark choice. */
+/* One stylesheet for the whole app. See docs/DESIGN.md before changing
+   anything here -- several choices are deliberate refusals of defaults.
+
+   No cards, no shadows, no rounded boxes. Structure comes from rules and
+   vertical rhythm. The accent colour appears in exactly two places: the cycle
+   button and today's marker. Completion reads as strike-through and dimming. */
+
+@font-face {
+  font-family: 'Archivo';
+  src: url('./assets/archivo-latin-var.woff2') format('woff2');
+  font-weight: 100 900;
+  font-stretch: 62% 125%;
+  font-display: swap;
+}
 
 :root {
   --paper: #e8eae6;
@@ -31,7 +41,6 @@
     --done: #5a615c;
     --mark: #7fb2cc;
     --on-mark: #14171a;
-
     color-scheme: dark;
   }
 }
@@ -45,7 +54,6 @@
   --done: #5a615c;
   --mark: #7fb2cc;
   --on-mark: #14171a;
-
   color-scheme: dark;
 }
 
@@ -57,23 +65,543 @@ body {
   margin: 0;
   background: var(--paper);
   color: var(--ink);
-  font-family: Archivo, ui-sans-serif, system-ui, sans-serif;
+  font-family: 'Archivo', ui-sans-serif, system-ui, -apple-system, sans-serif;
   font-size: 16px;
   line-height: 1.45;
   -webkit-text-size-adjust: 100%;
-  padding: env(safe-area-inset-top) env(safe-area-inset-right)
-    env(safe-area-inset-bottom) env(safe-area-inset-left);
+  overscroll-behavior-y: contain;
 }
 
-/* Counts sit in a right-aligned column; tabular figures stop the list
-   jittering as numbers change. */
+button {
+  font: inherit;
+  color: inherit;
+  background: none;
+  border: 0;
+  padding: 0;
+  cursor: pointer;
+}
+
+:where(button, a, input, [role='checkbox']):focus-visible {
+  outline: 2px solid var(--mark);
+  outline-offset: 3px;
+}
+
 .num {
   font-variant-numeric: tabular-nums;
 }
 
-:where(button, [role='checkbox'], a):focus-visible {
-  outline: 2px solid var(--mark);
-  outline-offset: 2px;
+/* --- shell ---------------------------------------------------------------- */
+
+.app {
+  max-width: var(--measure);
+  margin: 0 auto;
+  padding: 0 calc(var(--step) * 2) calc(var(--step) * 12);
+  padding-left: max(calc(var(--step) * 2), env(safe-area-inset-left));
+  padding-right: max(calc(var(--step) * 2), env(safe-area-inset-right));
+}
+
+/* The progress rule is the entire header: the app's only chrome and its only
+   stat, one element doing two jobs. */
+.progress {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  background: var(--paper);
+  padding-top: env(safe-area-inset-top);
+  margin: 0 calc(var(--step) * -2);
+  padding-inline: calc(var(--step) * 2);
+}
+
+.progress-track {
+  height: 2px;
+  background: var(--rule);
+  margin: 0 calc(var(--step) * -2);
+}
+
+.progress-fill {
+  height: 100%;
+  background: var(--ink);
+  transition: width 220ms ease-out;
+}
+
+.progress-meta {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: var(--step);
+  padding: calc(var(--step) * 1.5) 0 calc(var(--step) * 2);
+  font-size: 0.875rem;
+  color: var(--ink-2);
+}
+
+.progress-meta strong {
+  color: var(--ink);
+  font-weight: 600;
+}
+
+.unsynced {
+  color: var(--ink-2);
+  font-size: 0.8125rem;
+}
+
+/* --- tally mark ----------------------------------------------------------- */
+
+.tally {
+  display: inline-grid;
+  place-items: center;
+  width: var(--tap);
+  height: var(--tap);
+  flex: 0 0 var(--tap);
+  margin-left: calc(var(--step) * -1.5);
+}
+
+.tally svg {
+  width: 22px;
+  height: 22px;
+  overflow: visible;
+}
+
+.tally .stem {
+  stroke: var(--ink-2);
+  stroke-width: 2;
+  stroke-linecap: round;
+}
+
+.tally .slash {
+  stroke: var(--ink);
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-dasharray: 26;
+  stroke-dashoffset: 26;
+}
+
+.tally[aria-checked='true'] .slash {
+  stroke-dashoffset: 0;
+  transition: stroke-dashoffset var(--tick-ms) ease-out;
+}
+
+.tally[aria-checked='true'] .stem {
+  stroke: var(--ink);
+}
+
+/* Small, non-interactive marks used in the 7-day strip and the year view. */
+.tally-sm {
+  width: 10px;
+  height: 14px;
+  overflow: visible;
+}
+
+.tally-sm .stem {
+  stroke: var(--rule);
+  stroke-width: 1.5;
+  stroke-linecap: round;
+}
+
+.tally-sm.on .stem {
+  stroke: var(--ink-2);
+}
+
+.tally-sm.on .slash {
+  stroke: var(--ink-2);
+  stroke-width: 1.5;
+  stroke-linecap: round;
+}
+
+/* --- daily band ----------------------------------------------------------- */
+
+.daily-row {
+  display: flex;
+  align-items: center;
+  gap: var(--step);
+  min-height: var(--tap);
+}
+
+.daily-name {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.daily-row[data-done='true'] .daily-name {
+  color: var(--done);
+  text-decoration: line-through;
+  text-decoration-thickness: 1px;
+}
+
+.week {
+  display: flex;
+  gap: 3px;
+  align-items: center;
+}
+
+/* Double rule: above resets nightly, below persists. Structural information,
+   not decoration -- it means the boundary needs no label. */
+.band-end {
+  border-top: 1px solid var(--rule);
+  border-bottom: 1px solid var(--rule);
+  height: 3px;
+  margin: calc(var(--step) * 2) 0 calc(var(--step) * 3);
+}
+
+/* --- rotation ------------------------------------------------------------- */
+
+.category {
+  margin-bottom: calc(var(--step) * 3);
+}
+
+.category-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: var(--step);
+  padding-bottom: var(--step);
+  font-size: 1rem;
+  font-weight: 600;
+  font-stretch: 112%;
+}
+
+.category-count {
+  color: var(--ink-2);
+  font-weight: 400;
+  font-size: 0.875rem;
+  font-stretch: 100%;
+}
+
+.exercise {
+  display: flex;
+  align-items: center;
+  gap: var(--step);
+  width: 100%;
+  min-height: var(--tap);
+  text-align: left;
+}
+
+.exercise-name {
+  flex: 1;
+  min-width: 0;
+}
+
+.exercise[data-done='true'] .exercise-name {
+  color: var(--done);
+  text-decoration: line-through;
+  text-decoration-thickness: 1px;
+}
+
+.skip-badge {
+  font-size: 0.75rem;
+  color: var(--ink-2);
+  white-space: nowrap;
+}
+
+/* Completed categories collapse to one struck-through line and sink below the
+   hairline, so the top of the screen is only ever what is still actionable. */
+.completed-zone {
+  border-top: 1px solid var(--rule);
+  padding-top: calc(var(--step) * 2);
+  margin-top: calc(var(--step) * 2);
+}
+
+.category-collapsed {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  width: 100%;
+  gap: var(--step);
+  min-height: 36px;
+  color: var(--done);
+}
+
+.category-collapsed .name {
+  text-decoration: line-through;
+  text-decoration-thickness: 1px;
+  font-weight: 600;
+  font-stretch: 112%;
+}
+
+/* --- cycle button --------------------------------------------------------- */
+
+.cycle-action {
+  margin-top: calc(var(--step) * 4);
+}
+
+.btn {
+  display: block;
+  width: 100%;
+  min-height: var(--tap);
+  padding: calc(var(--step) * 1.5) calc(var(--step) * 2);
+  border: 1px solid var(--rule);
+  color: var(--ink-2);
+  text-align: center;
+}
+
+.btn-primary {
+  background: var(--mark);
+  color: var(--on-mark);
+  border-color: var(--mark);
+  font-weight: 600;
+  font-stretch: 112%;
+}
+
+.btn-danger {
+  color: var(--ink);
+  border-color: var(--ink-2);
+}
+
+/* --- sheet ---------------------------------------------------------------- */
+
+.sheet-backdrop {
+  position: fixed;
+  inset: 0;
+  background: color-mix(in srgb, var(--ink) 45%, transparent);
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  z-index: 10;
+}
+
+.sheet {
+  background: var(--paper);
+  width: 100%;
+  max-width: var(--measure);
+  padding: calc(var(--step) * 3) calc(var(--step) * 2);
+  padding-bottom: max(calc(var(--step) * 3), env(safe-area-inset-bottom));
+  border-top: 2px solid var(--ink);
+}
+
+.sheet h2 {
+  margin: 0 0 var(--step);
+  font-size: 1.125rem;
+  font-stretch: 112%;
+}
+
+.sheet p {
+  margin: 0 0 calc(var(--step) * 3);
+  color: var(--ink-2);
+}
+
+.sheet-actions {
+  display: grid;
+  gap: var(--step);
+}
+
+/* --- history -------------------------------------------------------------- */
+
+.section-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: var(--step);
+  margin: calc(var(--step) * 4) 0 calc(var(--step) * 2);
+  font-size: 1rem;
+  font-weight: 600;
+  font-stretch: 112%;
+}
+
+.stats {
+  display: flex;
+  gap: calc(var(--step) * 4);
+  margin-bottom: calc(var(--step) * 2);
+}
+
+.stat-value {
+  font-size: 1.75rem;
+  font-stretch: 112%;
+  font-weight: 600;
+  line-height: 1.1;
+}
+
+.stat-label {
+  font-size: 0.8125rem;
+  color: var(--ink-2);
+}
+
+.month {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 2px;
+}
+
+.month-label {
+  text-align: center;
+  font-size: 0.6875rem;
+  color: var(--ink-2);
+  padding-bottom: 4px;
+}
+
+.day {
+  aspect-ratio: 1;
+  display: grid;
+  place-items: center;
+  font-size: 0.75rem;
+  color: var(--ink-2);
+  border: 1px solid transparent;
+}
+
+.day[data-active='true'] {
+  color: var(--ink);
+}
+
+.day[data-today='true'] {
+  border-color: var(--mark);
+  color: var(--mark);
+  font-weight: 600;
+}
+
+.day[data-outside='true'] {
+  opacity: 0.3;
+}
+
+.month-nav {
+  display: flex;
+  gap: calc(var(--step) * 2);
+  align-items: center;
+}
+
+.month-nav button {
+  color: var(--ink-2);
+  min-width: 32px;
+  min-height: 32px;
+}
+
+/* The year as 52 columns of 7 marks: a wall of what you have accumulated.
+   Not GitHub squares -- that would undercut the tally metaphor entirely. */
+.year {
+  display: flex;
+  gap: 3px;
+  overflow-x: auto;
+  padding-bottom: var(--step);
+}
+
+.year-week {
+  display: grid;
+  grid-template-rows: repeat(7, 1fr);
+  gap: 2px;
+}
+
+.cycle-history {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--step);
+  padding: var(--step) 0;
+  border-bottom: 1px solid var(--rule);
+  font-size: 0.875rem;
+}
+
+.cycle-history .detail {
+  color: var(--ink-2);
+}
+
+/* --- forms and settings --------------------------------------------------- */
+
+.field {
+  display: block;
+  margin-bottom: calc(var(--step) * 2);
+}
+
+.field span {
+  display: block;
+  font-size: 0.8125rem;
+  color: var(--ink-2);
+  margin-bottom: 4px;
+}
+
+input,
+select {
+  font: inherit;
+  color: var(--ink);
+  background: var(--raise);
+  border: 1px solid var(--rule);
+  padding: calc(var(--step) * 1.25) calc(var(--step) * 1.5);
+  width: 100%;
+  min-height: var(--tap);
+}
+
+.row {
+  display: flex;
+  align-items: center;
+  gap: var(--step);
+  padding: var(--step) 0;
+  border-bottom: 1px solid var(--rule);
+}
+
+.row .grow {
+  flex: 1;
+  min-width: 0;
+}
+
+.muted {
+  color: var(--ink-2);
+  font-size: 0.875rem;
+}
+
+.error {
+  color: var(--ink);
+  border-left: 2px solid var(--ink);
+  padding-left: var(--step);
+  margin-bottom: calc(var(--step) * 2);
+}
+
+.empty {
+  color: var(--ink-2);
+  padding: calc(var(--step) * 4) 0;
+}
+
+.inline-actions {
+  display: flex;
+  gap: calc(var(--step) * 2);
+}
+
+.link {
+  color: var(--ink-2);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  min-height: var(--tap);
+}
+
+/* --- nav ------------------------------------------------------------------ */
+
+.nav {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 3;
+  display: flex;
+  justify-content: center;
+  gap: calc(var(--step) * 5);
+  background: var(--paper);
+  border-top: 1px solid var(--rule);
+  padding: var(--step) calc(var(--step) * 2);
+  padding-bottom: max(var(--step), env(safe-area-inset-bottom));
+}
+
+.nav button {
+  color: var(--ink-2);
+  min-height: 36px;
+  padding: 0 var(--step);
+  border-bottom: 2px solid transparent;
+}
+
+.nav button[aria-current='page'] {
+  color: var(--ink);
+  border-bottom-color: var(--mark);
+}
+
+/* --- login ---------------------------------------------------------------- */
+
+.login {
+  max-width: 20rem;
+  margin: 18vh auto 0;
+  padding: 0 calc(var(--step) * 2);
+}
+
+.login h1 {
+  font-size: 1.5rem;
+  font-stretch: 125%;
+  font-weight: 600;
+  margin: 0 0 calc(var(--step) * 3);
 }
 
 @media (prefers-reduced-motion: reduce) {

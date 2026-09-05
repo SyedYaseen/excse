@@ -6,6 +6,7 @@
 // see src/routes/state.rs; the two must stay in step.
 
 import { today as todayISO } from './dates.js'
+import { uuid } from './uuid.js'
 
 const STATE_KEY = 'exse.state'
 const OUTBOX_KEY = 'exse.outbox'
@@ -250,7 +251,7 @@ function endCycle(s, { day }) {
     ),
     pastCycles: [closed, ...s.pastCycles],
     cycle: {
-      id: crypto.randomUUID(),
+      id: uuid(),
       seq: s.cycle.seq + 1,
       startedOn: day,
       endedOn: null,

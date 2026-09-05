@@ -8,7 +8,7 @@ test('B6 — add an exercise, and it appears in its category on Today', async ({
   await settings(app)
   await app.getByRole('button', { name: 'Add' }).click()
   await app.getByLabel('Name').fill('Test wall sit')
-  await app.getByLabel('Muscle group').fill('Legs')
+  await app.getByLabel('Muscle group').selectOption('Legs')
   await app.getByRole('button', { name: 'Save' }).click()
 
   await app.getByRole('button', { name: 'Today' }).click()
@@ -18,6 +18,21 @@ test('B6 — add an exercise, and it appears in its category on Today', async ({
   await expect
     .poll(() => psql("select count(*) from exercises where name = 'Test wall sit'"))
     .toBe('1')
+})
+
+test('B6 — the muscle group combo box offers a new category', async ({ app }) => {
+  await settings(app)
+  await app.getByRole('button', { name: 'Add' }).click()
+  await app.getByLabel('Name').fill('Test face pull')
+  await app.getByLabel('Muscle group').selectOption('Add new category…')
+  await app.getByLabel('New category name').fill('Test shoulders')
+  await app.getByRole('button', { name: 'Save' }).click()
+
+  await expect
+    .poll(() =>
+      psql("select category from exercises where name = 'Test face pull'"),
+    )
+    .toBe('Test shoulders')
 })
 
 test('B6 — switching cadence to daily moves it into the top band', async ({ app }) => {

@@ -1,6 +1,9 @@
 import { useState } from 'react'
 import { api } from '../lib/api.js'
 import { actions, clearLocal } from '../lib/store.js'
+import { uuid } from '../lib/uuid.js'
+
+const NEW_CATEGORY = '__new__'
 
 const THEMES = [
   ['system', 'System'],
@@ -10,14 +13,23 @@ const THEMES = [
 
 function ExerciseEditor({ exercise, categories, onDone }) {
   const [name, setName] = useState(exercise?.name ?? '')
-  const [category, setCategory] = useState(exercise?.category ?? categories[0] ?? 'Core')
+  // A real <select> rather than a text input with a datalist: datalist's
+  // suggestion dropdown does not render on most mobile browsers, and this is
+  // a phone app. Choosing an existing category or "Add new category" is what
+  // a combo box means here.
+  const [categoryChoice, setCategoryChoice] = useState(
+    exercise?.category ?? categories[0] ?? NEW_CATEGORY,
+  )
+  const [newCategory, setNewCategory] = useState('')
   const [cadence, setCadence] = useState(exercise?.cadence ?? 'cycle')
+
+  const category = categoryChoice === NEW_CATEGORY ? newCategory : categoryChoice
 
   function save(e) {
     e.preventDefault()
-    if (!name.trim()) return
+    if (!name.trim() || !category.trim()) return
     actions.upsertExercise({
-      id: exercise?.id ?? crypto.randomUUID(),
+      id: exercise?.id ?? uuid(),
       name: name.trim(),
       category: category.trim(),
       cadence,
@@ -34,17 +46,25 @@ function ExerciseEditor({ exercise, categories, onDone }) {
       </label>
       <label className="field">
         <span>Muscle group</span>
-        <input
-          value={category}
-          onChange={(e) => setCategory(e.target.value)}
-          list="exse-categories"
-        />
-        <datalist id="exse-categories">
+        <select value={categoryChoice} onChange={(e) => setCategoryChoice(e.target.value)}>
           {categories.map((c) => (
-            <option key={c} value={c} />
+            <option key={c} value={c}>
+              {c}
+            </option>
           ))}
-        </datalist>
+          <option value={NEW_CATEGORY}>Add new category…</option>
+        </select>
       </label>
+      {categoryChoice === NEW_CATEGORY && (
+        <label className="field">
+          <span>New category name</span>
+          <input
+            value={newCategory}
+            onChange={(e) => setNewCategory(e.target.value)}
+            autoFocus={categories.length > 0}
+          />
+        </label>
+      )}
       <label className="field">
         <span>How often</span>
         <select value={cadence} onChange={(e) => setCadence(e.target.value)}>

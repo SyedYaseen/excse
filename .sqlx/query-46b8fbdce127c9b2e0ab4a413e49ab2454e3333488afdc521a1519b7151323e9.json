@@ -1,0 +1,14 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "update exercises set skip_streak = 0, completed_on = null where user_id = $1",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "46b8fbdce127c9b2e0ab4a413e49ab2454e3333488afdc521a1519b7151323e9"
+}

@@ -18,6 +18,41 @@ pub async fn get_state(
     Ok(Json(out))
 }
 
+/// TEMP: debug-only full progress wipe for the calling user. Clears history,
+/// cycles, and the calendar but leaves the exercise list, account, and
+/// session untouched. Remove this route and its Settings button together
+/// once asked.
+pub async fn reset_progress(
+    AxumState(state): AxumState<AppState>,
+    user: AuthUser,
+) -> AppResult<Json<State>> {
+    let mut tx = state.db.begin().await?;
+
+    sqlx::query!("delete from exercise_logs where user_id = $1", user.id)
+        .execute(&mut *tx)
+        .await?;
+
+    // Cascades into cycle_skips for this user's cycles.
+    sqlx::query!("delete from cycles where user_id = $1", user.id)
+        .execute(&mut *tx)
+        .await?;
+
+    sqlx::query!("delete from active_days where user_id = $1", user.id)
+        .execute(&mut *tx)
+        .await?;
+
+    sqlx::query!(
+        "update exercises set skip_streak = 0, completed_on = null where user_id = $1",
+        user.id
+    )
+    .execute(&mut *tx)
+    .await?;
+
+    let out = load_state(&mut tx, user.id, state.retention_days, state.day_threshold).await?;
+    tx.commit().await?;
+    Ok(Json(out))
+}
+
 pub async fn sync(
     AxumState(state): AxumState<AppState>,
     user: AuthUser,

@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { api } from '../lib/api.js'
-import { actions } from '../lib/store.js'
+import { actions, clearLocal } from '../lib/store.js'
 
 const THEMES = [
   ['system', 'System'],
@@ -106,6 +106,41 @@ function PasswordForm() {
   )
 }
 
+// TEMP: remove with api.resetProgress and the server route once asked.
+function ResetProgressButton() {
+  const [busy, setBusy] = useState(false)
+  const [msg, setMsg] = useState(null)
+
+  async function reset() {
+    if (
+      !confirm(
+        'Reset all progress? This clears history, cycles, and the calendar. Your account and exercise list stay.',
+      )
+    ) {
+      return
+    }
+    setBusy(true)
+    setMsg(null)
+    try {
+      await api.resetProgress()
+      clearLocal()
+      location.reload()
+    } catch (err) {
+      setMsg(err.message)
+      setBusy(false)
+    }
+  }
+
+  return (
+    <div>
+      {msg && <p className="error">{msg}</p>}
+      <button className="btn" onClick={reset} disabled={busy}>
+        {busy ? 'Resetting…' : 'Reset all progress'}
+      </button>
+    </div>
+  )
+}
+
 export function Settings({ state, theme, setTheme, onSignOut }) {
   const [editing, setEditing] = useState(null)
   const categories = [...new Set(state.exercises.map((e) => e.category))].sort()
@@ -183,6 +218,11 @@ export function Settings({ state, theme, setTheme, onSignOut }) {
       <button className="btn" onClick={onSignOut}>
         Sign out
       </button>
+
+      <div className="section-head">
+        <span>Danger zone (temporary)</span>
+      </div>
+      <ResetProgressButton />
     </div>
   )
 }

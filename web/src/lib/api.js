@@ -31,4 +31,6 @@ export const api = {
   changePassword: (current, next) => request('POST', '/api/password', { current, next }),
   state: () => request('GET', '/api/state'),
   sync: (ops) => request('POST', '/api/sync', { ops }),
+  // TEMP: remove with the Settings reset button once asked.
+  resetProgress: () => request('POST', '/api/reset-progress'),
 }

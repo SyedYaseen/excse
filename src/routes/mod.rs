@@ -13,4 +13,6 @@ pub fn api() -> Router<AppState> {
         .route("/password", post(auth::change_password))
         .route("/state", get(state::get_state))
         .route("/sync", post(state::sync))
+        // TEMP: remove with the Settings reset button once asked.
+        .route("/reset-progress", post(state::reset_progress))
 }

@@ -264,9 +264,9 @@ Known and deliberate, so finding them is not a finding:
 - **No offline cold start, no install prompt, no app icon.** The PWA layer is deferred; it
   needs HTTPS first, since service workers require a secure context. See `docs/TODO.md`.
 - **Plain HTTP on a LAN IP.** Exposure was deliberately postponed.
-- **No drag handle for reordering.** The op, the server handler and the sort tie-break all
-  work; Settings has no UI to drive them. Manual order is only the final tie-break, below
-  the neglect ordering, so it rarely changes what you see.
+- **Manual reorder rarely changes what you see.** Settings has up/down buttons per category,
+  but the order they set is only the final tie-break, below the neglect ordering, and the
+  Today screen's order is frozen until a new day, a new cycle, or "Re-sort".
 - **Only one user.** Multi-user is an explicit non-goal.
 - **No reps, sets, weights or timers.** Also explicit non-goals — the app answers "what
   haven't I done yet?" and nothing else.

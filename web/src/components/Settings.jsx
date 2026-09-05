@@ -126,6 +126,18 @@ function PasswordForm() {
   )
 }
 
+// Moves id one slot up (delta -1) or down (delta +1) within its own
+// category and returns the new id order for that category, or null if the
+// move is out of range. `sorted` must already be ordered by sortOrder.
+function moveWithinCategory(sorted, category, id, delta) {
+  const ids = sorted.filter((e) => e.category === category).map((e) => e.id)
+  const i = ids.indexOf(id)
+  const j = i + delta
+  if (i === -1 || j < 0 || j >= ids.length) return null
+  ;[ids[i], ids[j]] = [ids[j], ids[i]]
+  return ids
+}
+
 // TEMP: remove with api.resetProgress and the server route once asked.
 function ResetProgressButton() {
   const [busy, setBusy] = useState(false)
@@ -164,6 +176,9 @@ function ResetProgressButton() {
 export function Settings({ state, theme, setTheme, onSignOut }) {
   const [editing, setEditing] = useState(null)
   const categories = [...new Set(state.exercises.map((e) => e.category))].sort()
+  const sorted = [...state.exercises].sort(
+    (a, b) => a.sortOrder - b.sortOrder || a.name.localeCompare(b.name),
+  )
 
   if (editing) {
     return (
@@ -189,27 +204,55 @@ export function Settings({ state, theme, setTheme, onSignOut }) {
         </button>
       </div>
 
-      {state.exercises.map((e) => (
-        <div className="row" key={e.id}>
-          <span className="grow">{e.name}</span>
-          <span className="muted">
-            {e.cadence === 'daily' ? 'every day' : e.category}
-          </span>
-          <button className="link" onClick={() => setEditing(e)}>
-            Edit
-          </button>
-          <button
-            className="link"
-            onClick={() => {
-              if (confirm(`Remove ${e.name}? Your history stays.`)) {
-                actions.archiveExercise(e.id)
-              }
-            }}
-          >
-            Remove
-          </button>
-        </div>
-      ))}
+      {categories.map((category) => {
+        const inCategory = sorted.filter((e) => e.category === category)
+        return (
+          <div key={category}>
+            <div className="settings-category">{category}</div>
+            {inCategory.map((e, i) => (
+              <div className="row" key={e.id}>
+                <span className="grow">{e.name}</span>
+                <span className="muted">{e.cadence === 'daily' ? 'every day' : null}</span>
+                <button
+                  className="link"
+                  aria-label="Move up"
+                  disabled={i === 0}
+                  onClick={() => {
+                    const ids = moveWithinCategory(sorted, category, e.id, -1)
+                    if (ids) actions.reorder(ids)
+                  }}
+                >
+                  ▲
+                </button>
+                <button
+                  className="link"
+                  aria-label="Move down"
+                  disabled={i === inCategory.length - 1}
+                  onClick={() => {
+                    const ids = moveWithinCategory(sorted, category, e.id, 1)
+                    if (ids) actions.reorder(ids)
+                  }}
+                >
+                  ▼
+                </button>
+                <button className="link" onClick={() => setEditing(e)}>
+                  Edit
+                </button>
+                <button
+                  className="link"
+                  onClick={() => {
+                    if (confirm(`Remove ${e.name}? Your history stays.`)) {
+                      actions.archiveExercise(e.id)
+                    }
+                  }}
+                >
+                  Remove
+                </button>
+              </div>
+            ))}
+          </div>
+        )
+      })}
 
       <div className="section-head">
         <span>Appearance</span>

@@ -86,6 +86,32 @@ test('B6 — removing an exercise hides it but keeps its history', async ({ app 
   expect(await psql('select count(*) from exercise_logs')).toBe('1')
 })
 
+test('B6 — exercises can be reordered within a category', async ({ app }) => {
+  await settings(app)
+  const names = () => app.locator('.row .grow').allTextContents()
+
+  const before = await names()
+  expect(before.indexOf('Squat')).toBeLessThan(before.indexOf('Split squat'))
+
+  const squatRow = app.locator('.row').filter({ has: app.getByText('Squat', { exact: true }) })
+  await squatRow.getByRole('button', { name: 'Move down' }).click()
+
+  const after = await names()
+  expect(after.indexOf('Squat')).toBeGreaterThan(after.indexOf('Split squat'))
+
+  await expect
+    .poll(() =>
+      psql("select name from exercises where category = 'Legs' order by sort_order, name limit 1"),
+    )
+    .toBe('Split squat')
+
+  // Reload to prove the new order round-tripped through sync, not just local state.
+  await app.reload()
+  await settings(app)
+  const reloaded = await names()
+  expect(reloaded.indexOf('Squat')).toBeGreaterThan(reloaded.indexOf('Split squat'))
+})
+
 test('B6 — the password can be changed and used to sign back in', async ({ app, context }) => {
   const OLD = process.env.EXSE_PASSWORD ?? 'testpass123'
   const NEW = 'changed-in-test-987'

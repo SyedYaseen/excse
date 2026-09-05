@@ -706,6 +706,13 @@ select {
   font-size: var(--t-meta);
 }
 
+.settings-category {
+  margin: calc(var(--step) * 3) 0 var(--step);
+  font-size: var(--t-meta);
+  font-weight: 600;
+  color: var(--ink-2);
+}
+
 .error {
   color: var(--ink);
   border-left: 2px solid var(--ink);
@@ -728,6 +735,12 @@ select {
   text-decoration: underline;
   text-underline-offset: 3px;
   min-height: var(--tap);
+}
+
+.link:disabled {
+  opacity: 0.35;
+  cursor: default;
+  text-decoration: none;
 }
 
 /* Selected state carries weight as well as colour -- colour alone is not a

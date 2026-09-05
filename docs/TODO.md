@@ -35,10 +35,6 @@ Living checklist. Each step is one commit. Update as things land so this can be 
 
 ## Known gaps
 
-- **Reorder has no UI.** The `reorder` op, the server handler and the sort
-  tie-break all work, but Settings has no drag handle to drive it. It matters a
-  little more now that the order is frozen between sorts, since manual order is
-  what breaks ties inside a group.
 - **Reduced-motion covers ticking, not the progress rule.** The tally slash is
   suppressed under `prefers-reduced-motion`, but the header fill still animates
   its width. Small, and nobody has complained yet because nobody has used it.

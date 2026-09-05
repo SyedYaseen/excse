@@ -1,4 +1,5 @@
 import { lastDays, shortDate } from '../lib/dates.js'
+import { formatSet } from './LogSetSheet.jsx'
 import { TallyDot, TallyMark } from './TallyMark.jsx'
 
 /**
@@ -13,12 +14,13 @@ import { TallyDot, TallyMark } from './TallyMark.jsx'
  * thick line and communicated nothing. A tinted band with a label does the
  * same job in a way you do not have to be told about.
  */
-export function DailyBand({ daily, logs, today, onToggle }) {
+export function DailyBand({ daily, logs, today, detailedEntry, onToggle }) {
   if (daily.length === 0) return null
 
   const week = lastDays(today, 7)
   const loggedFor = (id) => new Set(logs.filter((l) => l.exerciseId === id).map((l) => l.day))
   const doneCount = daily.filter((e) => loggedFor(e.id).has(today)).length
+  const todaySet = (id) => logs.find((l) => l.exerciseId === id && l.day === today)
 
   return (
     <section className="daily-band" aria-label="Every day">
@@ -32,6 +34,7 @@ export function DailyBand({ daily, logs, today, onToggle }) {
       {daily.map((e) => {
         const days = loggedFor(e.id)
         const done = days.has(today)
+        const label = detailedEntry && done && formatSet(todaySet(e.id) ?? {})
         return (
           <button
             className="daily-row"
@@ -44,6 +47,7 @@ export function DailyBand({ daily, logs, today, onToggle }) {
           >
             <TallyMark checked={done} />
             <span className="daily-name">{e.name}</span>
+            {label && <span className="set-detail muted num">{label}</span>}
             <span className="week" aria-hidden="true">
               {week.map((d) => (
                 <TallyDot key={d} on={days.has(d)} title={shortDate(d)} />

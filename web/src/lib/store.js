@@ -169,12 +169,22 @@ function withDay(s, logs, day) {
   return on ? [...s.activeDays, day].sort() : s.activeDays.filter((d) => d !== day)
 }
 
-function tick(s, { exerciseId, day }) {
+function tick(s, { exerciseId, day, reps, weight }) {
   const ex = s.exercises.find((e) => e.id === exerciseId)
   if (!ex) return s
 
-  const logged = s.logs.some((l) => l.exerciseId === exerciseId && l.day === day)
-  const logs = logged ? s.logs : [...s.logs, { exerciseId, day }]
+  // Mirrors the server's coalesce-on-conflict: a plain tap (no detail) never
+  // erases reps/weight a detailed entry recorded earlier for the same day,
+  // and dispatching another tick for an already-logged day -- an edit -- can
+  // update them in place.
+  const existing = s.logs.find((l) => l.exerciseId === exerciseId && l.day === day)
+  const entry = {
+    exerciseId,
+    day,
+    reps: reps ?? existing?.reps ?? null,
+    weight: weight ?? existing?.weight ?? null,
+  }
+  const logs = existing ? s.logs.map((l) => (l === existing ? entry : l)) : [...s.logs, entry]
 
   return {
     ...s,
@@ -286,7 +296,14 @@ function upsertExercise(s, op) {
 // ---------------------------------------------------------------------------
 
 export const actions = {
-  tick: (exerciseId, day = todayISO()) => dispatch({ type: 'tick', exerciseId, day }),
+  tick: (exerciseId, day = todayISO(), detail = {}) =>
+    dispatch({
+      type: 'tick',
+      exerciseId,
+      day,
+      reps: detail.reps ?? null,
+      weight: detail.weight ?? null,
+    }),
   untick: (exerciseId, day = todayISO()) => dispatch({ type: 'untick', exerciseId, day }),
   endCycle: (day = todayISO()) => dispatch({ type: 'endCycle', day }),
   upsertExercise: (e) => dispatch({ type: 'upsertExercise', ...e }),

@@ -942,6 +942,86 @@ async fn reorder_assigns_sort_order_by_position(db: PgPool) {
 }
 
 // ---------------------------------------------------------------------------
+// Detailed entry -- reps and weight
+// ---------------------------------------------------------------------------
+
+#[sqlx::test]
+async fn detailed_entry_is_off_by_default_and_toggles_via_settings(db: PgPool) {
+    let api = Api::new(db).await;
+    let st = api.state().await;
+    assert_eq!(st["detailedEntry"], false);
+
+    let (s, v) = api
+        .call("POST", "/api/settings", Some(json!({"detailedEntry": true})))
+        .await;
+    assert_eq!(s, StatusCode::OK);
+    assert_eq!(v["detailedEntry"], true);
+
+    let st = api.state().await;
+    assert_eq!(st["detailedEntry"], true, "the preference did not persist");
+}
+
+#[sqlx::test]
+async fn a_tick_can_carry_reps_and_weight(db: PgPool) {
+    let api = Api::new(db).await;
+    let id = api.cycle_exercise("Back").await;
+
+    let st = api
+        .sync(json!([
+            {"type":"tick","exerciseId":id,"day":today(),"reps":12,"weight":135.5}
+        ]))
+        .await;
+
+    let log = st["logs"].as_array().unwrap().iter().find(|l| l["exerciseId"] == id.as_str()).unwrap();
+    assert_eq!(log["reps"], 12);
+    assert_eq!(log["weight"], 135.5);
+}
+
+#[sqlx::test]
+async fn a_plain_tick_does_not_erase_previously_logged_detail(db: PgPool) {
+    let api = Api::new(db).await;
+    let id = api.cycle_exercise("Back").await;
+    let other = api.cycle_exercise("Chest").await;
+
+    api.sync(json!([
+        {"type":"tick","exerciseId":id,"day":today(),"reps":12,"weight":135.5}
+    ]))
+    .await;
+
+    // A second, detail-less tick against the same day (e.g. an untick/tick
+    // correction, or an older client outbox replaying) must not wipe it.
+    let st = api
+        .sync(json!([{"type":"tick","exerciseId":id,"day":today()},
+                      {"type":"tick","exerciseId":other,"day":today()}]))
+        .await;
+
+    let log = st["logs"].as_array().unwrap().iter().find(|l| l["exerciseId"] == id.as_str()).unwrap();
+    assert_eq!(log["reps"], 12, "a plain re-tick erased the reps");
+    assert_eq!(log["weight"], 135.5, "a plain re-tick erased the weight");
+}
+
+#[sqlx::test]
+async fn dispatching_another_tick_edits_the_same_days_detail(db: PgPool) {
+    let api = Api::new(db).await;
+    let id = api.cycle_exercise("Back").await;
+
+    api.sync(json!([
+        {"type":"tick","exerciseId":id,"day":today(),"reps":10,"weight":100.0}
+    ]))
+    .await;
+    let st = api
+        .sync(json!([
+            {"type":"tick","exerciseId":id,"day":today(),"reps":12,"weight":110.0}
+        ]))
+        .await;
+
+    let log = st["logs"].as_array().unwrap().iter().find(|l| l["exerciseId"] == id.as_str()).unwrap();
+    assert_eq!(log["reps"], 12, "the edit did not take");
+    assert_eq!(log["weight"], 110.0, "the edit did not take");
+    assert_eq!(st["logs"].as_array().unwrap().len(), 1, "editing created a second row");
+}
+
+// ---------------------------------------------------------------------------
 // Account recovery
 // ---------------------------------------------------------------------------
 

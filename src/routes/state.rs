@@ -5,6 +5,7 @@ use crate::AppState;
 use axum::extract::State as AxumState;
 use axum::Json;
 use chrono::NaiveDate;
+use serde::Deserialize;
 use sqlx::PgConnection;
 use uuid::Uuid;
 
@@ -43,6 +44,34 @@ pub async fn reset_progress(
 
     sqlx::query!(
         "update exercises set skip_streak = 0, completed_on = null where user_id = $1",
+        user.id
+    )
+    .execute(&mut *tx)
+    .await?;
+
+    let out = load_state(&mut tx, user.id, state.retention_days, state.day_threshold).await?;
+    tx.commit().await?;
+    Ok(Json(out))
+}
+
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct SettingsBody {
+    pub detailed_entry: bool,
+}
+
+/// Account-level preference, not an outbox op: it is not a fact about a
+/// workout the way a tick is, and there is nothing to replay offline.
+pub async fn update_settings(
+    AxumState(state): AxumState<AppState>,
+    user: AuthUser,
+    Json(body): Json<SettingsBody>,
+) -> AppResult<Json<State>> {
+    let mut tx = state.db.begin().await?;
+
+    sqlx::query!(
+        "update users set detailed_entry = $1 where id = $2",
+        body.detailed_entry,
         user.id
     )
     .execute(&mut *tx)
@@ -93,7 +122,7 @@ async fn apply(
     day_threshold: i32,
 ) -> AppResult<()> {
     match op {
-        Op::Tick { exercise_id, day } => {
+        Op::Tick { exercise_id, day, reps, weight } => {
             check_day(*day)?;
             let ex = owned_exercise(conn, user_id, *exercise_id).await?;
 
@@ -106,6 +135,27 @@ async fn apply(
             )
             .execute(&mut *conn)
             .await?;
+
+            // A separate, conditional update rather than folding reps/weight
+            // into the insert above: a plain tap (no detail) replaying
+            // against an already-logged day must not wipe values a detailed
+            // entry recorded earlier, and `coalesce($1, col)` here means a
+            // later edit -- dispatched as another tick for the same day --
+            // updates them in place without touching the other.
+            if reps.is_some() || weight.is_some() {
+                sqlx::query!(
+                    "update exercise_logs
+                        set reps = coalesce($1, reps), weight = coalesce($2, weight)
+                      where user_id = $3 and exercise_id = $4 and day = $5",
+                    *reps,
+                    *weight,
+                    user_id,
+                    exercise_id,
+                    day
+                )
+                .execute(&mut *conn)
+                .await?;
+            }
 
             recount_day(&mut *conn, user_id, *day, day_threshold).await?;
 
@@ -462,13 +512,20 @@ async fn load_state(
 
     let logs = sqlx::query_as!(
         LogEntry,
-        "select exercise_id, day from exercise_logs
+        "select exercise_id, day, reps, weight from exercise_logs
           where user_id = $1 and day >= current_date - $2::int
           order by day",
         user_id,
         retention_days
     )
     .fetch_all(&mut *conn)
+    .await?;
+
+    let detailed_entry = sqlx::query_scalar!(
+        "select detailed_entry from users where id = $1",
+        user_id
+    )
+    .fetch_one(&mut *conn)
     .await?;
 
     // Every day ever, deliberately unbounded: this is the record the whole app
@@ -499,5 +556,6 @@ async fn load_state(
         manual_days,
         retention_days,
         day_threshold,
+        detailed_entry,
     })
 }

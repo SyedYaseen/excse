@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { formatSet } from './LogSetSheet.jsx'
 import { TallyMark } from './TallyMark.jsx'
 
 function skipLabel(n) {
@@ -15,8 +16,9 @@ export const categoryId = (name) => `group-${name.replace(/\W+/g, '-').toLowerCa
  * tapping the tally, which is the gesture people reach for first -- aiming a
  * thumb at a 22px glyph mid-set is not.
  */
-function ExerciseRow({ exercise, onToggle }) {
+function ExerciseRow({ exercise, todaySet, onToggle }) {
   const done = exercise.completedOn != null
+  const label = todaySet && formatSet(todaySet)
   return (
     <button
       className="exercise"
@@ -28,6 +30,7 @@ function ExerciseRow({ exercise, onToggle }) {
     >
       <TallyMark checked={done} />
       <span className="exercise-name">{exercise.name}</span>
+      {label && <span className="set-detail muted num">{label}</span>}
       {!done && exercise.skipStreak > 0 && (
         <span className="skip-badge">{skipLabel(exercise.skipStreak)}</span>
       )}
@@ -35,7 +38,7 @@ function ExerciseRow({ exercise, onToggle }) {
   )
 }
 
-function CategoryGroup({ category, focus, onToggle }) {
+function CategoryGroup({ category, focus, todaySets, onToggle }) {
   return (
     <section
       className="category"
@@ -51,13 +54,13 @@ function CategoryGroup({ category, focus, onToggle }) {
         </span>
       </h2>
       {category.exercises.map((e) => (
-        <ExerciseRow key={e.id} exercise={e} onToggle={onToggle} />
+        <ExerciseRow key={e.id} exercise={e} todaySet={todaySets.get(e.id)} onToggle={onToggle} />
       ))}
     </section>
   )
 }
 
-function CollapsedCategory({ category, onToggle }) {
+function CollapsedCategory({ category, todaySets, onToggle }) {
   const [open, setOpen] = useState(false)
   return (
     <section className="category" id={categoryId(category.name)} data-settled="true">
@@ -73,7 +76,7 @@ function CollapsedCategory({ category, onToggle }) {
       </button>
       {open &&
         category.exercises.map((e) => (
-          <ExerciseRow key={e.id} exercise={e} onToggle={onToggle} />
+          <ExerciseRow key={e.id} exercise={e} todaySet={todaySets.get(e.id)} onToggle={onToggle} />
         ))}
     </section>
   )
@@ -84,7 +87,7 @@ function CollapsedCategory({ category, onToggle }) {
  * completed zone. One you finish *now* stays in place and reads as done, so
  * nothing ever moves under the thumb that just tapped it.
  */
-export function Rotation({ categories, focus, onToggle }) {
+export function Rotation({ categories, focus, logs, today, detailedEntry, onToggle }) {
   if (categories.length === 0) {
     return (
       <p className="empty">
@@ -92,6 +95,12 @@ export function Rotation({ categories, focus, onToggle }) {
       </p>
     )
   }
+
+  // Only ever today's own row: a repeat later in the cycle is what created
+  // this occurrence, an earlier completion's detail is not "now".
+  const todaySets = detailedEntry
+    ? new Map(logs.filter((l) => l.day === today).map((l) => [l.exerciseId, l]))
+    : new Map()
 
   const open = categories.filter((c) => !c.settled)
   const settled = categories.filter((c) => c.settled)
@@ -103,6 +112,7 @@ export function Rotation({ categories, focus, onToggle }) {
           key={c.name}
           category={c}
           focus={c.name === focus}
+          todaySets={todaySets}
           onToggle={onToggle}
         />
       ))}
@@ -111,7 +121,7 @@ export function Rotation({ categories, focus, onToggle }) {
         <div className="completed-zone">
           <p className="completed-label">Done this cycle</p>
           {settled.map((c) => (
-            <CollapsedCategory key={c.name} category={c} onToggle={onToggle} />
+            <CollapsedCategory key={c.name} category={c} todaySets={todaySets} onToggle={onToggle} />
           ))}
         </div>
       )}

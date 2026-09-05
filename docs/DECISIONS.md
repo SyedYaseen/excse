@@ -154,6 +154,29 @@ app's database connectivity with it.
 **Caveat:** the port binding names `192.168.1.18` explicitly so the app is LAN-only rather than
 `0.0.0.0`. A DHCP address change breaks startup — use a static lease.
 
+## Detailed entry is a per-account preference, and edits ride the tick op
+
+Reps/weight live on `exercise_logs` itself (nullable `reps`, `weight`) rather than a separate
+sets table: this app already logs at most one row per exercise per day (see "Tapping a done
+cycle exercise is date-dependent" above), so a set's detail belongs on that row.
+
+`users.detailed_entry` decides whether the client's tap opens the entry sheet at all. It is not
+client-local like theme -- it has to follow the account across devices, so it rides on
+`/api/state` next to `dayThreshold` and is changed through its own `/api/settings` route rather
+than the outbox: it is a preference, not a fact about a workout, and there is nothing to replay
+offline.
+
+There is no separate "edit" endpoint either. Dispatching another `tick` for a day already logged
+just updates that row: the insert is `on conflict do nothing`, and reps/weight are written by a
+second, conditional `update ... set col = coalesce($1, col)`, so a plain tap (no detail) replaying
+against an already-logged day can never erase values a detailed entry recorded earlier, while a
+tick that does carry detail overwrites them in place. The client's reducer mirrors this exactly
+in `store.js`.
+
+The entry sheet only ever shows or edits *today's* row. A cycle exercise completed earlier in the
+cycle and not repeated today has no "today" log to show inline -- its detail still exists in
+`state.logs` for anyone who queries it, there just isn't a per-exercise history view yet.
+
 ## PWA and HTTPS deferred
 
 Service workers require a secure context, so offline mode cannot work over plain HTTP on a LAN

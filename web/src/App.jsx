@@ -16,6 +16,7 @@ import { categoryId, Rotation } from './components/Rotation.jsx'
 import { CycleButton } from './components/CycleButton.jsx'
 import { History } from './components/History.jsx'
 import { Login } from './components/Login.jsx'
+import { LogSetSheet } from './components/LogSetSheet.jsx'
 import { Settings } from './components/Settings.jsx'
 
 const THEME_KEY = 'exse.theme'
@@ -74,6 +75,7 @@ export default function App() {
   const [booted, setBooted] = useState(false)
   const [resortNonce, setResortNonce] = useState(0)
   const orderRef = useRef({ key: null, order: null })
+  const [logging, setLogging] = useState(null)
 
   useEffect(() => {
     const stop = startAutoSync()
@@ -115,11 +117,32 @@ export default function App() {
     // earlier in the cycle is logged again instead, so a repeat still counts
     // as a day exercised -- see docs/DECISIONS.md.
     const loggedToday = doneToday.has(exercise.id)
+
+    // Detailed mode trades the one-tap gesture for a sheet, both for a fresh
+    // log and for revisiting today's own numbers -- there is no separate
+    // "edit" control, so tapping a done row while pending isn't lost either
+    // way. Off, the tap stays instant.
+    if (state.detailedEntry) {
+      setLogging({ exercise, wasLogged: loggedToday })
+      return
+    }
+
     if (loggedToday) actions.untick(exercise.id, today)
     else {
       actions.tick(exercise.id, today)
       navigator.vibrate?.(10)
     }
+  }
+
+  function saveLog(detail) {
+    actions.tick(logging.exercise.id, today, detail)
+    if (!logging.wasLogged) navigator.vibrate?.(10)
+    setLogging(null)
+  }
+
+  function removeLog() {
+    actions.untick(logging.exercise.id, today)
+    setLogging(null)
   }
 
   async function signOut() {
@@ -184,8 +207,21 @@ export default function App() {
 
         {view === 'today' && (
           <>
-            <DailyBand daily={daily} logs={state.logs} today={today} onToggle={toggle} />
-            <Rotation categories={categories} focus={focus} onToggle={toggle} />
+            <DailyBand
+              daily={daily}
+              logs={state.logs}
+              today={today}
+              detailedEntry={state.detailedEntry}
+              onToggle={toggle}
+            />
+            <Rotation
+              categories={categories}
+              focus={focus}
+              logs={state.logs}
+              today={today}
+              detailedEntry={state.detailedEntry}
+              onToggle={toggle}
+            />
             <CycleButton
               progress={progress}
               skipped={skipped}
@@ -206,6 +242,18 @@ export default function App() {
             theme={theme}
             setTheme={setTheme}
             onSignOut={signOut}
+          />
+        )}
+        {logging && (
+          <LogSetSheet
+            exercise={logging.exercise}
+            initial={state.logs.find(
+              (l) => l.exerciseId === logging.exercise.id && l.day === today,
+            )}
+            wasLogged={logging.wasLogged}
+            onSave={saveLog}
+            onRemove={removeLog}
+            onCancel={() => setLogging(null)}
           />
         )}
       </main>

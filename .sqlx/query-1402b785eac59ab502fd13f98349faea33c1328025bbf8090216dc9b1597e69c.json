@@ -1,0 +1,18 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "update exercise_logs\n                        set reps = coalesce($1, reps), weight = coalesce($2, weight)\n                      where user_id = $3 and exercise_id = $4 and day = $5",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Int4",
+        "Float4",
+        "Uuid",
+        "Uuid",
+        "Date"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "1402b785eac59ab502fd13f98349faea33c1328025bbf8090216dc9b1597e69c"
+}

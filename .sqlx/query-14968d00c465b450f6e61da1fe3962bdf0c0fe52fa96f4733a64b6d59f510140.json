@@ -1,0 +1,41 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "select exercise_id, day, reps, weight from exercise_logs\n          where user_id = $1 and day >= current_date - $2::int\n          order by day",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "exercise_id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "day",
+        "type_info": "Date"
+      },
+      {
+        "ordinal": 2,
+        "name": "reps",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 3,
+        "name": "weight",
+        "type_info": "Float4"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Int4"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      true,
+      true
+    ]
+  },
+  "hash": "14968d00c465b450f6e61da1fe3962bdf0c0fe52fa96f4733a64b6d59f510140"
+}

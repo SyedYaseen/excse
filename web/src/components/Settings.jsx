@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { api } from '../lib/api.js'
-import { actions, clearLocal } from '../lib/store.js'
+import { actions, clearLocal, setServerState } from '../lib/store.js'
 import { uuid } from '../lib/uuid.js'
 
 const NEW_CATEGORY = '__new__'
@@ -138,6 +138,40 @@ function moveWithinCategory(sorted, category, id, delta) {
   return ids
 }
 
+/**
+ * A per-account preference, not a client-local one like theme: it decides
+ * whether the tap opens the entry sheet at all, so it has to follow the
+ * account across devices rather than live in localStorage. Toggling it
+ * round-trips through `/api/settings` and adopts the state that comes back,
+ * the same way the reset button below does.
+ */
+function DetailedEntryToggle({ enabled }) {
+  const [busy, setBusy] = useState(false)
+  const [msg, setMsg] = useState(null)
+
+  async function toggle() {
+    setBusy(true)
+    setMsg(null)
+    try {
+      const next = await api.setDetailedEntry(!enabled)
+      setServerState(next)
+    } catch (err) {
+      setMsg(err.message)
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  return (
+    <div>
+      {msg && <p className="error">{msg}</p>}
+      <button className="link link-icon" aria-pressed={enabled} onClick={toggle} disabled={busy}>
+        {enabled ? 'On' : 'Off'}
+      </button>
+    </div>
+  )
+}
+
 // TEMP: remove with api.resetProgress and the server route once asked.
 function ResetProgressButton() {
   const [busy, setBusy] = useState(false)
@@ -253,6 +287,17 @@ export function Settings({ state, theme, setTheme, onSignOut }) {
           </div>
         )
       })}
+
+      <div className="section-head">
+        <span>Tracking</span>
+      </div>
+      <div className="row">
+        <span className="grow">Detailed entry</span>
+        <DetailedEntryToggle enabled={state.detailedEntry} />
+      </div>
+      <p className="muted">
+        Log reps and weight each time you tick off an exercise, instead of just marking it done.
+      </p>
 
       <div className="section-head">
         <span>Appearance</span>

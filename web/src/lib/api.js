@@ -27,8 +27,10 @@ async function request(method, url, body) {
 export const api = {
   me: () => request('GET', '/api/me'),
   login: (username, password) => request('POST', '/api/login', { username, password }),
+  signup: (email, password) => request('POST', '/api/signup', { email, password }),
   logout: () => request('POST', '/api/logout'),
   changePassword: (current, next) => request('POST', '/api/password', { current, next }),
+  setDetailedEntry: (detailedEntry) => request('POST', '/api/settings', { detailedEntry }),
   state: () => request('GET', '/api/state'),
   sync: (ops) => request('POST', '/api/sync', { ops }),
   // TEMP: remove with the Settings reset button once asked.

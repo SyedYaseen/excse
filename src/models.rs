@@ -31,6 +31,10 @@ pub struct Cycle {
 pub struct LogEntry {
     pub exercise_id: Uuid,
     pub day: NaiveDate,
+    /// Set detail, only ever present when the user has detailed entry on.
+    /// Optional even then -- not every exercise is loaded.
+    pub reps: Option<i32>,
+    pub weight: Option<f32>,
 }
 
 #[derive(Serialize)]
@@ -51,6 +55,9 @@ pub struct State {
     /// How many rotation exercises a day needs before it marks itself on the
     /// calendar. The client mirrors this rule locally, so it has to know it.
     pub day_threshold: i32,
+    /// Whether the entry sheet asks for reps/weight. A per-account
+    /// preference, not a client-local one, so it travels across devices.
+    pub detailed_entry: bool,
 }
 
 /// One user intent. The client appends these to an outbox and replays them;
@@ -63,6 +70,13 @@ pub enum Op {
     Tick {
         exercise_id: Uuid,
         day: NaiveDate,
+        /// Set detail, sent only when detailed entry is on. `None` never
+        /// erases a value a previous tick recorded for the same day -- see
+        /// `apply` in routes/state.rs.
+        #[serde(default)]
+        reps: Option<i32>,
+        #[serde(default)]
+        weight: Option<f32>,
     },
     Untick {
         exercise_id: Uuid,

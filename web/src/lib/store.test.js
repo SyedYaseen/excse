@@ -57,8 +57,26 @@ const find = (s, id) => s.exercises.find((e) => e.id === id)
 
 test('tick records the log and cycle completion', () => {
   const s = reduce(base(), { type: 'tick', exerciseId: 'a', day: TODAY })
-  assert.deepEqual(s.logs, [{ exerciseId: 'a', day: TODAY }])
+  assert.deepEqual(s.logs, [{ exerciseId: 'a', day: TODAY, reps: null, weight: null }])
   assert.equal(find(s, 'a').completedOn, TODAY)
+})
+
+test('tick can carry reps and weight, and a later plain tick does not erase them', () => {
+  let s = reduce(base(), { type: 'tick', exerciseId: 'a', day: TODAY, reps: 12, weight: 135 })
+  assert.deepEqual(s.logs, [{ exerciseId: 'a', day: TODAY, reps: 12, weight: 135 }])
+
+  s = reduce(s, { type: 'tick', exerciseId: 'a', day: TODAY })
+  assert.deepEqual(
+    s.logs,
+    [{ exerciseId: 'a', day: TODAY, reps: 12, weight: 135 }],
+    'a detail-less re-tick erased previously logged detail',
+  )
+})
+
+test('a later tick with detail edits the same day in place', () => {
+  let s = reduce(base(), { type: 'tick', exerciseId: 'a', day: TODAY, reps: 10, weight: 100 })
+  s = reduce(s, { type: 'tick', exerciseId: 'a', day: TODAY, reps: 12, weight: 110 })
+  assert.deepEqual(s.logs, [{ exerciseId: 'a', day: TODAY, reps: 12, weight: 110 }])
 })
 
 test('one exercise does not make a day -- the threshold does', () => {

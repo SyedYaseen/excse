@@ -1,0 +1,22 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "select detailed_entry from users where id = $1",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "detailed_entry",
+        "type_info": "Bool"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "77a496ae242e8fb4a269328a35cecd20f04046fde0924f75796718f5770a0c05"
+}

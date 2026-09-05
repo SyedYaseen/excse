@@ -447,6 +447,13 @@ button {
   flex: 0 0 auto;
 }
 
+/* Today's own reps/weight, only ever shown in detailed mode. */
+.set-detail {
+  font-size: var(--t-meta);
+  white-space: nowrap;
+  flex: 0 0 auto;
+}
+
 /* Groups that were already finished at the last sort collapse to one
    struck-through line and sink below the rule, so the top of the screen is
    only ever what is still actionable. */

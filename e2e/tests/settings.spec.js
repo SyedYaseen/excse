@@ -87,6 +87,16 @@ test('B6 — removing an exercise hides it but keeps its history', async ({ app 
 })
 
 test('B6 — exercises can be reordered within a category', async ({ app }) => {
+  // resetState() deliberately leaves sort_order alone -- it is not part of
+  // "clean progress on cycle 1" -- so this test pins its own precondition
+  // rather than trusting the catalogue's seed order. Without this, running
+  // both the light and dark projects back to back against the one shared
+  // database makes the second project inherit the order the first project's
+  // own reorder click left behind.
+  psql("update exercises set sort_order = 0 where name = 'Squat'")
+  psql("update exercises set sort_order = 1 where name = 'Split squat'")
+  await app.reload()
+
   await settings(app)
   const names = () => app.locator('.row .grow').allTextContents()
 

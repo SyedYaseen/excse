@@ -743,6 +743,17 @@ select {
   text-decoration: none;
 }
 
+/* A glyph-only link -- the reorder arrows -- has no text to give it width.
+   WCAG 2.5.8 sets 24px as the floor for a control this size; centering the
+   glyph in that width keeps it from looking like dead padding. */
+.link-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: calc(var(--step) * 3);
+  text-decoration: none;
+}
+
 /* Selected state carries weight as well as colour -- colour alone is not a
    state indicator for anyone who cannot see the difference. */
 .link[aria-pressed='true'] {

@@ -214,7 +214,7 @@ export function Settings({ state, theme, setTheme, onSignOut }) {
                 <span className="grow">{e.name}</span>
                 <span className="muted">{e.cadence === 'daily' ? 'every day' : null}</span>
                 <button
-                  className="link"
+                  className="link link-icon"
                   aria-label="Move up"
                   disabled={i === 0}
                   onClick={() => {
@@ -225,7 +225,7 @@ export function Settings({ state, theme, setTheme, onSignOut }) {
                   ▲
                 </button>
                 <button
-                  className="link"
+                  className="link link-icon"
                   aria-label="Move down"
                   disabled={i === inCategory.length - 1}
                   onClick={() => {

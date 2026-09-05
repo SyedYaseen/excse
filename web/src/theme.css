@@ -806,6 +806,16 @@ select {
   margin: 0 0 calc(var(--step) * 3);
 }
 
+.btn-link {
+  display: block;
+  margin: calc(var(--step) * 2) auto 0;
+  background: none;
+  border: none;
+  color: var(--mark);
+  font-size: 0.85rem;
+  text-decoration: underline;
+}
+
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,

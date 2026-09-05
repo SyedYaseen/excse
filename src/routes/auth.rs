@@ -13,13 +13,72 @@ pub struct LoginBody {
     password: String,
 }
 
+#[derive(Deserialize)]
+pub struct SignupBody {
+    email: String,
+    password: String,
+}
+
+/// The email is stored as `users.username` -- there is no separate email
+/// column, and login already matches on that field case-insensitively.
+pub async fn signup(
+    State(state): State<AppState>,
+    jar: SignedCookieJar,
+    Json(body): Json<SignupBody>,
+) -> AppResult<(SignedCookieJar, Json<Value>)> {
+    let email = body.email.trim().to_lowercase();
+    if email.is_empty() || !email.contains('@') || email.starts_with('@') || email.ends_with('@')
+    {
+        return Err(AppError::BadRequest(
+            "Enter a valid email address.".to_string(),
+        ));
+    }
+    if body.password.chars().count() < 8 {
+        return Err(AppError::BadRequest(
+            "Use at least 8 characters.".to_string(),
+        ));
+    }
+
+    let hash = auth::hash_password(&body.password).map_err(AppError::Other)?;
+
+    let mut tx = state.db.begin().await?;
+
+    let user_id = sqlx::query_scalar!(
+        "insert into users (username, password_hash) values ($1, $2) returning id",
+        email,
+        hash
+    )
+    .fetch_one(&mut *tx)
+    .await
+    .map_err(|e| match e.as_database_error() {
+        Some(db) if db.is_unique_violation() => {
+            AppError::BadRequest("That email is already registered.".to_string())
+        }
+        _ => AppError::Db(e),
+    })?;
+
+    crate::seed::apply_for(&mut tx, user_id).await?;
+
+    sqlx::query!(
+        "insert into cycles (user_id, seq, started_on) values ($1, 1, current_date)",
+        user_id
+    )
+    .execute(&mut *tx)
+    .await?;
+
+    tx.commit().await?;
+
+    let cookie = auth::issue_session(&state.db, user_id, state.cookie_secure).await?;
+    Ok((jar.add(cookie), Json(json!({ "username": email }))))
+}
+
 pub async fn login(
     State(state): State<AppState>,
     jar: SignedCookieJar,
     Json(body): Json<LoginBody>,
 ) -> AppResult<(SignedCookieJar, Json<Value>)> {
     let user = sqlx::query!(
-        "select id, username, password_hash from users where username = $1",
+        "select id, username, password_hash from users where lower(username) = lower($1)",
         body.username
     )
     .fetch_optional(&state.db)

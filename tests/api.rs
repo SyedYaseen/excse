@@ -216,6 +216,147 @@ async fn logout_revokes_the_session(db: PgPool) {
     assert_eq!(s, StatusCode::UNAUTHORIZED, "session survived logout");
 }
 
+#[sqlx::test]
+async fn signup_creates_a_seeded_account_signed_in_and_isolated_from_others(db: PgPool) {
+    let api = Api::new(db.clone()).await;
+
+    let res = api
+        .router
+        .clone()
+        .oneshot(
+            Request::post("/api/signup")
+                .header("content-type", "application/json")
+                .body(Body::from(
+                    json!({"email":"Jane@Example.com","password":TEST_PASSWORD}).to_string(),
+                ))
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let cookie = res
+        .headers()
+        .get("set-cookie")
+        .expect("signup set no cookie")
+        .to_str()
+        .unwrap()
+        .split(';')
+        .next()
+        .unwrap()
+        .to_string();
+
+    // Stored lowercased, and the signup response already reflects that.
+    let bytes = res.into_body().collect().await.unwrap().to_bytes();
+    let body: Value = serde_json::from_slice(&bytes).unwrap();
+    assert_eq!(body["username"], "jane@example.com");
+
+    // The new account gets its own seeded catalogue and first cycle, separate
+    // from admin's.
+    let req = Request::get("/api/state")
+        .header("cookie", &cookie)
+        .body(Body::empty())
+        .unwrap();
+    let res = api.router.clone().oneshot(req).await.unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let bytes = res.into_body().collect().await.unwrap().to_bytes();
+    let jane_state: Value = serde_json::from_slice(&bytes).unwrap();
+    assert_eq!(jane_state["exercises"].as_array().unwrap().len(), seeded());
+    assert_eq!(jane_state["cycle"]["seq"], 1);
+
+    let users: i64 = sqlx::query_scalar("select count(*) from users")
+        .fetch_one(&db)
+        .await
+        .unwrap();
+    assert_eq!(users, 2, "admin and jane should both exist");
+
+    // Admin's own state is untouched by jane's signup.
+    let admin_state = api.state().await;
+    assert_eq!(admin_state["exercises"].as_array().unwrap().len(), seeded());
+}
+
+#[sqlx::test]
+async fn signup_rejects_a_duplicate_email_case_insensitively(db: PgPool) {
+    let api = Api::new(db).await;
+
+    let signup = |email: &'static str| {
+        let router = api.router.clone();
+        async move {
+            router
+                .oneshot(
+                    Request::post("/api/signup")
+                        .header("content-type", "application/json")
+                        .body(Body::from(
+                            json!({"email": email, "password": TEST_PASSWORD}).to_string(),
+                        ))
+                        .unwrap(),
+                )
+                .await
+                .unwrap()
+        }
+    };
+
+    let res = signup("dup@example.com").await;
+    assert_eq!(res.status(), StatusCode::OK);
+
+    let res = signup("DUP@example.com").await;
+    assert_eq!(res.status(), StatusCode::BAD_REQUEST);
+}
+
+#[sqlx::test]
+async fn signup_rejects_a_bad_email_or_short_password(db: PgPool) {
+    let api = Api::new(db).await;
+
+    let res = api
+        .router
+        .clone()
+        .oneshot(
+            Request::post("/api/signup")
+                .header("content-type", "application/json")
+                .body(Body::from(
+                    json!({"email":"not-an-email","password":TEST_PASSWORD}).to_string(),
+                ))
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::BAD_REQUEST);
+
+    let res = api
+        .router
+        .clone()
+        .oneshot(
+            Request::post("/api/signup")
+                .header("content-type", "application/json")
+                .body(Body::from(
+                    json!({"email":"short@example.com","password":"short"}).to_string(),
+                ))
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::BAD_REQUEST);
+}
+
+#[sqlx::test]
+async fn login_matches_username_case_insensitively(db: PgPool) {
+    let api = Api::new(db).await;
+
+    let res = api
+        .router
+        .clone()
+        .oneshot(
+            Request::post("/api/login")
+                .header("content-type", "application/json")
+                .body(Body::from(
+                    json!({"username":"ADMIN","password":TEST_PASSWORD}).to_string(),
+                ))
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+}
+
 // ---------------------------------------------------------------------------
 // Ticking
 // ---------------------------------------------------------------------------

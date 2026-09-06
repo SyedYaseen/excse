@@ -1,4 +1,5 @@
 import { lastDays, shortDate } from '../lib/dates.js'
+import { matchesSearch } from '../lib/search.js'
 import { formatSet } from './LogSetSheet.jsx'
 import { TallyDot, TallyMark } from './TallyMark.jsx'
 
@@ -14,8 +15,13 @@ import { TallyDot, TallyMark } from './TallyMark.jsx'
  * thick line and communicated nothing. A tinted band with a label does the
  * same job in a way you do not have to be told about.
  */
-export function DailyBand({ daily, logs, today, detailedEntry, onToggle }) {
+export function DailyBand({ daily, logs, today, detailedEntry, search, onToggle }) {
   if (daily.length === 0) return null
+
+  // The header count stays honest to real progress; search only narrows
+  // which rows are on screen.
+  const visible = search ? daily.filter((e) => matchesSearch(e.name, search)) : daily
+  if (visible.length === 0) return null
 
   const week = lastDays(today, 7)
   const loggedFor = (id) => new Set(logs.filter((l) => l.exerciseId === id).map((l) => l.day))
@@ -31,7 +37,7 @@ export function DailyBand({ daily, logs, today, detailedEntry, onToggle }) {
         </span>
       </h2>
 
-      {daily.map((e) => {
+      {visible.map((e) => {
         const days = loggedFor(e.id)
         const done = days.has(today)
         const label = detailedEntry && done && formatSet(todaySet(e.id) ?? {})

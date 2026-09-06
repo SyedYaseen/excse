@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { formatSet } from './LogSetSheet.jsx'
+import { matchesSearch } from '../lib/search.js'
 import { TallyMark } from './TallyMark.jsx'
 
 function skipLabel(n) {
@@ -38,7 +39,17 @@ function ExerciseRow({ exercise, todaySet, onToggle }) {
   )
 }
 
-function CategoryGroup({ category, focus, todaySets, onToggle }) {
+// Search narrows which rows show without touching the counts in the
+// heading -- those stay honest to real progress, not to what is on screen.
+function visibleExercises(category, search) {
+  if (!search) return category.exercises
+  return category.exercises.filter((e) => matchesSearch(e.name, search))
+}
+
+function CategoryGroup({ category, focus, todaySets, search, onToggle }) {
+  const exercises = visibleExercises(category, search)
+  if (exercises.length === 0) return null
+
   return (
     <section
       className="category"
@@ -53,20 +64,27 @@ function CategoryGroup({ category, focus, todaySets, onToggle }) {
           {category.done}/{category.total}
         </span>
       </h2>
-      {category.exercises.map((e) => (
+      {exercises.map((e) => (
         <ExerciseRow key={e.id} exercise={e} todaySet={todaySets.get(e.id)} onToggle={onToggle} />
       ))}
     </section>
   )
 }
 
-function CollapsedCategory({ category, todaySets, onToggle }) {
+function CollapsedCategory({ category, todaySets, search, onToggle }) {
   const [open, setOpen] = useState(false)
+  const exercises = visibleExercises(category, search)
+  if (exercises.length === 0) return null
+
+  // A search match hiding inside a collapsed, already-finished category
+  // would otherwise need an extra tap just to see what matched.
+  const expanded = search ? true : open
+
   return (
     <section className="category" id={categoryId(category.name)} data-settled="true">
       <button
         className="category-collapsed"
-        aria-expanded={open}
+        aria-expanded={expanded}
         onClick={() => setOpen((v) => !v)}
       >
         <span className="name">{category.name}</span>
@@ -74,8 +92,8 @@ function CollapsedCategory({ category, todaySets, onToggle }) {
           {category.done}/{category.total}
         </span>
       </button>
-      {open &&
-        category.exercises.map((e) => (
+      {expanded &&
+        exercises.map((e) => (
           <ExerciseRow key={e.id} exercise={e} todaySet={todaySets.get(e.id)} onToggle={onToggle} />
         ))}
     </section>
@@ -87,7 +105,7 @@ function CollapsedCategory({ category, todaySets, onToggle }) {
  * completed zone. One you finish *now* stays in place and reads as done, so
  * nothing ever moves under the thumb that just tapped it.
  */
-export function Rotation({ categories, focus, logs, today, detailedEntry, onToggle }) {
+export function Rotation({ categories, focus, logs, today, detailedEntry, search, onToggle }) {
   if (categories.length === 0) {
     return (
       <p className="empty">
@@ -104,6 +122,7 @@ export function Rotation({ categories, focus, logs, today, detailedEntry, onTogg
 
   const open = categories.filter((c) => !c.settled)
   const settled = categories.filter((c) => c.settled)
+  const settledVisible = settled.some((c) => visibleExercises(c, search).length > 0)
 
   return (
     <>
@@ -113,15 +132,22 @@ export function Rotation({ categories, focus, logs, today, detailedEntry, onTogg
           category={c}
           focus={c.name === focus}
           todaySets={todaySets}
+          search={search}
           onToggle={onToggle}
         />
       ))}
 
-      {settled.length > 0 && (
+      {settledVisible && (
         <div className="completed-zone">
           <p className="completed-label">Done this cycle</p>
           {settled.map((c) => (
-            <CollapsedCategory key={c.name} category={c} todaySets={todaySets} onToggle={onToggle} />
+            <CollapsedCategory
+              key={c.name}
+              category={c}
+              todaySets={todaySets}
+              search={search}
+              onToggle={onToggle}
+            />
           ))}
         </div>
       )}

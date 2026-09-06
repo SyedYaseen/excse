@@ -10,6 +10,7 @@ import {
 } from './lib/sort.js'
 import { actions, clearLocal, getSnapshot, subscribe } from './lib/store.js'
 import { flush, refresh, startAutoSync } from './lib/sync.js'
+import { matchesSearch } from './lib/search.js'
 import { api } from './lib/api.js'
 import { DailyBand } from './components/DailyBand.jsx'
 import { categoryId, Rotation } from './components/Rotation.jsx'
@@ -76,6 +77,7 @@ export default function App() {
   const [resortNonce, setResortNonce] = useState(0)
   const orderRef = useRef({ key: null, order: null })
   const [logging, setLogging] = useState(null)
+  const [search, setSearch] = useState('')
 
   useEffect(() => {
     const stop = startAutoSync()
@@ -160,6 +162,9 @@ export default function App() {
   )
   const left = progress.total - progress.done
 
+  const searching = search.trim() !== ''
+  const noMatches = searching && !state.exercises.some((e) => matchesSearch(e.name, search))
+
   return (
     <>
       <main className="app">
@@ -207,21 +212,38 @@ export default function App() {
 
         {view === 'today' && (
           <>
-            <DailyBand
-              daily={daily}
-              logs={state.logs}
-              today={today}
-              detailedEntry={state.detailedEntry}
-              onToggle={toggle}
+            <input
+              type="search"
+              className="search-field"
+              placeholder="Search exercises"
+              aria-label="Search exercises"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
             />
-            <Rotation
-              categories={categories}
-              focus={focus}
-              logs={state.logs}
-              today={today}
-              detailedEntry={state.detailedEntry}
-              onToggle={toggle}
-            />
+
+            {noMatches ? (
+              <p className="empty">No exercises match "{search.trim()}".</p>
+            ) : (
+              <>
+                <DailyBand
+                  daily={daily}
+                  logs={state.logs}
+                  today={today}
+                  detailedEntry={state.detailedEntry}
+                  search={search}
+                  onToggle={toggle}
+                />
+                <Rotation
+                  categories={categories}
+                  focus={focus}
+                  logs={state.logs}
+                  today={today}
+                  detailedEntry={state.detailedEntry}
+                  search={search}
+                  onToggle={toggle}
+                />
+              </>
+            )}
             <CycleButton
               progress={progress}
               skipped={skipped}

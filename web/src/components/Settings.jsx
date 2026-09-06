@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { api } from '../lib/api.js'
+import { matchesSearch } from '../lib/search.js'
 import { actions, clearLocal, setServerState } from '../lib/store.js'
 import { uuid } from '../lib/uuid.js'
 
@@ -209,10 +210,17 @@ function ResetProgressButton() {
 
 export function Settings({ state, theme, setTheme, onSignOut }) {
   const [editing, setEditing] = useState(null)
+  const [search, setSearch] = useState('')
   const categories = [...new Set(state.exercises.map((e) => e.category))].sort()
   const sorted = [...state.exercises].sort(
     (a, b) => a.sortOrder - b.sortOrder || a.name.localeCompare(b.name),
   )
+
+  // A category still shows while searching if any exercise in it matches --
+  // the rows within it are what actually filter, further down.
+  const visibleCategories = search
+    ? categories.filter((c) => sorted.some((e) => e.category === c && matchesSearch(e.name, search)))
+    : categories
 
   if (editing) {
     return (
@@ -238,52 +246,68 @@ export function Settings({ state, theme, setTheme, onSignOut }) {
         </button>
       </div>
 
-      {categories.map((category) => {
+      <input
+        type="search"
+        className="search-field"
+        placeholder="Search exercises"
+        aria-label="Search exercises"
+        value={search}
+        onChange={(e) => setSearch(e.target.value)}
+      />
+
+      {search && visibleCategories.length === 0 && (
+        <p className="empty">No exercises match "{search.trim()}".</p>
+      )}
+
+      {visibleCategories.map((category) => {
         const inCategory = sorted.filter((e) => e.category === category)
         return (
           <div key={category}>
             <div className="settings-category">{category}</div>
-            {inCategory.map((e, i) => (
-              <div className="row" key={e.id}>
-                <span className="grow">{e.name}</span>
-                <span className="muted">{e.cadence === 'daily' ? 'every day' : null}</span>
-                <button
-                  className="link link-icon"
-                  aria-label="Move up"
-                  disabled={i === 0}
-                  onClick={() => {
-                    const ids = moveWithinCategory(sorted, category, e.id, -1)
-                    if (ids) actions.reorder(ids)
-                  }}
-                >
-                  ▲
-                </button>
-                <button
-                  className="link link-icon"
-                  aria-label="Move down"
-                  disabled={i === inCategory.length - 1}
-                  onClick={() => {
-                    const ids = moveWithinCategory(sorted, category, e.id, 1)
-                    if (ids) actions.reorder(ids)
-                  }}
-                >
-                  ▼
-                </button>
-                <button className="link" onClick={() => setEditing(e)}>
-                  Edit
-                </button>
-                <button
-                  className="link"
-                  onClick={() => {
-                    if (confirm(`Remove ${e.name}? Your history stays.`)) {
-                      actions.archiveExercise(e.id)
-                    }
-                  }}
-                >
-                  Remove
-                </button>
-              </div>
-            ))}
+            {inCategory.map((e, i) => {
+              if (search && !matchesSearch(e.name, search)) return null
+              return (
+                <div className="row" key={e.id}>
+                  <span className="grow">{e.name}</span>
+                  <span className="muted">{e.cadence === 'daily' ? 'every day' : null}</span>
+                  <button
+                    className="link link-icon"
+                    aria-label="Move up"
+                    disabled={i === 0}
+                    onClick={() => {
+                      const ids = moveWithinCategory(sorted, category, e.id, -1)
+                      if (ids) actions.reorder(ids)
+                    }}
+                  >
+                    ▲
+                  </button>
+                  <button
+                    className="link link-icon"
+                    aria-label="Move down"
+                    disabled={i === inCategory.length - 1}
+                    onClick={() => {
+                      const ids = moveWithinCategory(sorted, category, e.id, 1)
+                      if (ids) actions.reorder(ids)
+                    }}
+                  >
+                    ▼
+                  </button>
+                  <button className="link" onClick={() => setEditing(e)}>
+                    Edit
+                  </button>
+                  <button
+                    className="link"
+                    onClick={() => {
+                      if (confirm(`Remove ${e.name}? Your history stays.`)) {
+                        actions.archiveExercise(e.id)
+                      }
+                    }}
+                  >
+                    Remove
+                  </button>
+                </div>
+              )
+            })}
           </div>
         )
       })}
